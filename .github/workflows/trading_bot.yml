@@ -2,13 +2,18 @@ name: ApexFlash Crypto Futures Bot
 
 on:
   schedule:
-    # Körs automatiskt var 15:e minut dygnet runt
+    # Keep scheduled runs in dry-run mode until the system has been fully verified.
     - cron: '*/15 * * * *'
 
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Kör i simulerat läge (Dry Run)'
+        description: 'Simulerad körning (rekommenderas)'
+        required: true
+        type: boolean
+        default: true
+      allow_live_trading:
+        description: 'Tillåt livehandel (kräver separat granskning)'
         required: true
         type: boolean
         default: false
@@ -16,7 +21,7 @@ on:
         description: 'Risk per trade (% av saldo)'
         required: false
         type: string
-        default: '1.5'
+        default: '0.8'
 
 concurrency:
   group: apexflash-bot
@@ -24,37 +29,38 @@ concurrency:
 
 jobs:
   run-trading-bot:
-    name: Execute Gemini Flash Trading Decision
+    name: Execute ApexFlash
     runs-on: ubuntu-latest
     timeout-minutes: 8
 
     steps:
-      - name: 📥 Checka ut källkod
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: 🐍 Konfigurera Python 3.11
+      - name: Configure Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: 📦 Installera beroenden
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: ⚡ Kör ApexFlash Trading Bot
+      - name: Run ApexFlash (safe by default)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           BYBIT_API_KEY: ${{ secrets.BYBIT_API_KEY }}
           BYBIT_API_SECRET: ${{ secrets.BYBIT_API_SECRET }}
           EXCHANGE_ID: 'bybit'
-          USE_TESTNET: 'false'
-          DRY_RUN: ${{ inputs.dry_run || secrets.DRY_RUN || 'false' }}
-          RISK_PER_TRADE_PCT: ${{ inputs.risk_percent || secrets.RISK_PER_TRADE_PCT || '1.5' }}
+          USE_TESTNET: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_live_trading && !inputs.dry_run && 'false' || 'true' }}
+          # Scheduled runs are always dry-run. Manual runs are dry-run unless explicitly disabled.
+          DRY_RUN: ${{ github.event_name == 'schedule' && 'true' || (inputs.dry_run && 'true' || 'false') }}
+          LIVE_TRADING_ENABLED: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_live_trading && !inputs.dry_run && 'true' || 'false' }}
+          RISK_PER_TRADE_PCT: ${{ inputs.risk_percent || '0.8' }}
           MIN_CONFIDENCE: '0.72'
           MAX_LEVERAGE: '10'
           MIN_LEVERAGE: '3'
           TIMEFRAME: '15m'
-        run: |
-          python main.py
+        run: python main.py
