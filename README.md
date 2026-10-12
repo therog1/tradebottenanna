@@ -1,29 +1,24 @@
-# ApexFlash — OKX EU Paper Test (v1)
+# ApexFlash — OKX EU demo trading
 
-Den här versionen är en **paper-testversion** för att verifiera marknadsdata, Gemini-signaler och grundläggande riskberäkningar. Den **skickar aldrig order** och innehåller ingen autentiserad handelsanslutning. Den ersätter inte en färdig live-/demohandelsbot.
+This package adds order submission to the previous diagnostic bot. It is configured for **OKX EEA demo only**: `eea.okx.com` and `x-simulated-trading: 1`. It does not contain a live-trading fallback.
 
-## Funktioner
-- Läser publika OKX EU swap-marknader via `eea.okx.com`.
-- Analyserar BTC, ETH, SOL, AVAX och SUI med EMA, RSI, ATR, stöd/motstånd och volym.
-- Frågar Gemini (`gemini-3.8-flash` som standard) om LONG/SHORT/HOLD.
-- Validerar riktning på entry/SL/TP och kräver minst 5:1 reward/risk för en paper-idé.
-- Beräknar hypotetisk risk och storlek utifrån antaget paper-saldo; inga pengar flyttas.
-- Skriver rapport i GitHub Actions Step Summary.
+## GitHub Actions secrets
+Keep these as repository Actions secrets; never paste them into code or chat:
+- `OKX_API_KEY`
+- `OKX_API_SECRET`
+- `OKX_API_PASSPHRASE`
+- `GEMINI_API_KEY`
 
-## Installera på GitHub
-1. Ladda ner och packa upp ZIP-filen.
-2. Ladda upp/ersätt filerna i repositoryts rot, inklusive mappen `.github/workflows`.
-3. I **Settings → Secrets and variables → Actions → Secrets**, behåll/skapa `GEMINI_API_KEY`. Ingen Bybit-nyckel behövs i denna paper-version.
-4. Gå till **Actions → ApexFlash OKX EU Paper Test → Run workflow**.
+## Run
+Open **Actions → ApexFlash OKX EU DEMO TRADING → Run workflow**. The workflow runs tests, then checks the 10 configured symbols. It may open a position only when Gemini returns LONG/SHORT, confidence passes the threshold, stop/target levels validate, there is no existing position for the symbol, and the global position cap is not reached. HOLD or any API/model error means no entry.
 
-## Viktigt
-- Alla workflows är manuella; inget schemalagt körschema är aktiverat.
-- `DRY_RUN=true` och `LIVE_TRADING_ENABLED=false` anges uttryckligen.
-- Koden anropar inte `create_order`, `create_market_order`, `create_limit_order` eller andra ordermetoder.
-- Paper-saldot är endast ett antagande (`PAPER_BALANCE_USDT=1000`), inte ditt verkliga saldo.
-- Beräknad hävstång är en grov exponeringsgräns, inte en likvidationsmodell. Ingen verklig position, SL eller TP skapas.
-- Gemini kan lämna felaktiga nivåer; ogiltiga nivåer avvisas. Ett HOLD är ett normalt resultat.
-- Detta är steg 1. Riktig OKX-demohandel kräver separat verifiering av OKX EEA:s autentiserade API, demokonton, positionsläge, kontraktsspecifikationer och börsbaserade skyddsorder. Livehandel ska inte aktiveras med denna version.
+The order request attaches stop-loss and take-profit algo instructions to the entry. OKX/CCXT must accept the attached-algo parameters for the specific instrument/account configuration; inspect the action log and verify the resulting order and attached algo orders in the OKX demo interface. Do not assume an order succeeded just because the workflow started.
 
-## Lokala tester
-`python -m unittest discover -s tests -v`
+## Risk defaults
+- risk sizing reference: 0.25% of available reported USDT equity
+- max two open positions
+- max notional cap: 10% of equity × 2 leverage per position
+- minimum AI confidence: 72%
+- strategy requires at least 5:1 reward/risk
+
+This is experimental software, not a profit guarantee. The workflow is manual-dispatch only; it does not loop all night by itself. Test a single run and inspect exchange-side positions and attached stop/target orders before enabling any schedule.
