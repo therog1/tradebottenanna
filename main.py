@@ -427,6 +427,7 @@ def calculate_order_sizing(
         "position_value_usdt": position_value_usdt,
         "coin_quantity": coin_quantity,
         "leverage": leverage,
+        "balance": balance,
     }
 
 
@@ -492,9 +493,22 @@ def execute_trade(
         except Exception as e:
             logger.warning(f"Kunde inte sätta hävstång: {e}")
 
-        # 2. Avrunda antal till börsens tillåtna precision
+        # 2. Avrunda antal till börsens tillåtna precision och hantera minimum-gränser
         market = exchange.market(symbol)
-        formatted_qty = exchange.amount_to_precision(symbol, qty)
+        min_qty = float(market.get("limits", {}).get("amount", {}).get("min") or 0.0)
+        float_qty = float(qty)
+
+        if min_qty > 0 and float_qty < min_qty:
+            required_margin = (min_qty * plan["entry_price"]) / leverage
+            # Tillåt uppjustering till minimum endast om marginalen är säker (<40% av saldot)
+            if required_margin <= (plan.get("balance", 1000.0) * 0.45):
+                logger.info(f"Justerar volym från {float_qty:.4f} till börsens minimum {min_qty} för {symbol}")
+                float_qty = min_qty
+            else:
+                logger.warning(f"Beräknad volym {float_qty} under börsens minimum {min_qty}. Hoppar över för att skydda riskgränsen.")
+                return False
+
+        formatted_qty = exchange.amount_to_precision(symbol, float_qty)
         formatted_tp = exchange.price_to_precision(symbol, tp)
         formatted_sl = exchange.price_to_precision(symbol, sl)
 
