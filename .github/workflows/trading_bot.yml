@@ -1,35 +1,18 @@
-name: ApexFlash Crypto Futures Bot
+name: ApexFlash OKX EU - SAFE DRY RUN
 
 on:
-  schedule:
-    # Keep scheduled runs in dry-run mode until the system has been fully verified.
-    - cron: '*/15 * * * *'
-
   workflow_dispatch:
-    inputs:
-      dry_run:
-        description: 'Simulerad körning (rekommenderas)'
-        required: true
-        type: boolean
-        default: true
-      allow_live_trading:
-        description: 'Tillåt livehandel (kräver separat granskning)'
-        required: true
-        type: boolean
-        default: false
-      risk_percent:
-        description: 'Risk per trade (% av saldo)'
-        required: false
-        type: string
-        default: '0.8'
+
+permissions:
+  contents: read
 
 concurrency:
-  group: apexflash-bot
+  group: apexflash-okx-safe
   cancel-in-progress: false
 
 jobs:
   run-trading-bot:
-    name: Execute ApexFlash
+    name: ApexFlash OKX public-data dry run
     runs-on: ubuntu-latest
     timeout-minutes: 8
 
@@ -48,17 +31,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run ApexFlash (safe by default)
+      - name: Run ApexFlash (forced safe mode)
         env:
+          EXCHANGE_ID: 'okx'
+          # This patch is intentionally dry-run only. No trading API secrets needed.
+          USE_TESTNET: 'false'
+          DRY_RUN: 'true'
+          LIVE_TRADING_ENABLED: 'false'
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          BYBIT_API_KEY: ${{ secrets.BYBIT_API_KEY }}
-          BYBIT_API_SECRET: ${{ secrets.BYBIT_API_SECRET }}
-          EXCHANGE_ID: 'bybit'
-          USE_TESTNET: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_live_trading && !inputs.dry_run && 'false' || 'true' }}
-          # Scheduled runs are always dry-run. Manual runs are dry-run unless explicitly disabled.
-          DRY_RUN: ${{ github.event_name == 'schedule' && 'true' || (inputs.dry_run && 'true' || 'false') }}
-          LIVE_TRADING_ENABLED: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_live_trading && !inputs.dry_run && 'true' || 'false' }}
-          RISK_PER_TRADE_PCT: ${{ inputs.risk_percent || '0.8' }}
+          RISK_PER_TRADE_PCT: '0.8'
           MIN_CONFIDENCE: '0.72'
           MAX_LEVERAGE: '10'
           MIN_LEVERAGE: '3'

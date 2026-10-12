@@ -23,7 +23,7 @@ jobs:
           for inst_type in ("FUTURES", "SWAP"):
               params = urllib.parse.urlencode({"instType": inst_type})
               url = f"{BASE}/api/v5/public/instruments?{params}"
-              print(f"\n=== {inst_type} ===")
+              print(f"\\n=== {inst_type} ===")
               print(f"URL: {url}")
 
               req = urllib.request.Request(
@@ -55,5 +55,5 @@ jobs:
               if not matches:
                   print("No matching USDT instruments found.")
 
-          print("\nPublic market test finished.")
+          print("\\nPublic market test finished.")
           PY
