@@ -1,23 +1,11 @@
 #!/usr/bin/env python3
-"""
-ApexFlash — OKX EU dry-run build.
-This build is deliberately fail-closed: it reads public market data and asks Gemini
-for a decision, but it NEVER submits orders. Live order execution must be implemented
-and tested separately against OKX demo before being enabled.
-"""
-import json
-import logging
-import math
-import os
-import sys
-import time
+"""ApexFlash OKX EU — paper trading only. No exchange order methods are used."""
+import json, logging, math, os, sys, time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import ccxt
-import requests
 from dotenv import load_dotenv
-
 try:
     from google import genai
     from google.genai import types
@@ -26,247 +14,135 @@ except ImportError:
     types = None
 
 load_dotenv()
+logging.basicConfig(level=os.getenv('LOG_LEVEL','INFO'), format='%(asctime)s [%(levelname)s] %(message)s', handlers=[logging.StreamHandler(sys.stdout)])
+log=logging.getLogger('ApexFlash')
+EXCHANGE_ID=os.getenv('EXCHANGE_ID','okx').lower()
+GEMINI_API_KEY=os.getenv('GEMINI_API_KEY','')
+GEMINI_MODEL=os.getenv('GEMINI_MODEL','gemini-3.8-flash')
+GEMINI_TIMEOUT_MS=max(5000,min(int(os.getenv('GEMINI_TIMEOUT_MS','30000')),60000))
+TIMEFRAME=os.getenv('TIMEFRAME','15m')
+MIN_CONFIDENCE=float(os.getenv('MIN_CONFIDENCE','0.72'))
+RISK_PER_TRADE_PCT=float(os.getenv('RISK_PER_TRADE_PCT','0.8'))
+PAPER_BALANCE_USDT=float(os.getenv('PAPER_BALANCE_USDT','1000'))
+MAX_LEVERAGE=max(1,min(int(os.getenv('MAX_LEVERAGE','10')),10))
+SYMBOLS=['BTC/USDT:USDT','ETH/USDT:USDT','SOL/USDT:USDT','AVAX/USDT:USDT','SUI/USDT:USDT']
+SUMMARY_PATH=os.getenv('GITHUB_STEP_SUMMARY','')
 
-logging.basicConfig(
-    level=os.getenv("LOG_LEVEL", "INFO"),
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-logger = logging.getLogger("ApexFlash")
 
-# Safe defaults. Live execution is intentionally not implemented in this build.
-EXCHANGE_ID = os.getenv("EXCHANGE_ID", "okx").lower()
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-TIMEFRAME = os.getenv("TIMEFRAME", "15m")
-CANDLE_LIMIT = 100
-GEMINI_TIMEOUT_MS = max(5000, min(int(os.getenv("GEMINI_TIMEOUT_MS", "30000")), 60000))
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
-MIN_CONFIDENCE = float(os.getenv("MIN_CONFIDENCE", "0.72"))
-RISK_PER_TRADE_PCT = float(os.getenv("RISK_PER_TRADE_PCT", "0.8"))
-MAX_LEVERAGE = int(os.getenv("MAX_LEVERAGE", "10"))
-MIN_LEVERAGE = int(os.getenv("MIN_LEVERAGE", "3"))
-WATCHLIST = [
-    "BTC/USDT:USDT",
-    "ETH/USDT:USDT",
-    "SOL/USDT:USDT",
-    "AVAX/USDT:USDT",
-    "SUI/USDT:USDT",
-]
-GITHUB_STEP_SUMMARY = os.getenv("GITHUB_STEP_SUMMARY")
+def make_exchange():
+    if EXCHANGE_ID!='okx': raise RuntimeError('Endast EXCHANGE_ID=okx stöds i denna paper-build.')
+    ex=ccxt.okx({'enableRateLimit':True,'timeout':10000,'options':{'defaultType':'swap','fetchCurrencies':False}})
+    ex.hostname='eea.okx.com'
+    markets=ex.load_markets()
+    if not markets: raise RuntimeError('OKX EU returnerade inga marknader.')
+    log.info('OKX EU-marknader laddade: %d',len(markets))
+    return ex
 
-def init_exchange() -> ccxt.Exchange:
-    """Public OKX EU market-data connection; no API keys needed for dry run."""
-    if EXCHANGE_ID != "okx":
-        raise RuntimeError(f"Den här patchen är avsedd för OKX, inte {EXCHANGE_ID!r}.")
-    exchange = ccxt.okx({
-        "enableRateLimit": True,
-        "timeout": 10000,
-        "options": {
-            "defaultType": "swap",
-            "fetchCurrencies": False,
-        },
-    })
-    # OKX EEA API hostname observed working from GitHub Actions public-market test.
-    exchange.hostname = "eea.okx.com"
-    logger.info("Laddar publika OKX EU-marknader (timeout 10 s)...")
-    markets = exchange.load_markets()
-    if not markets:
-        raise RuntimeError("OKX returnerade inga marknader; avbryter.")
-    logger.info("OKX-marknader laddade: %d", len(markets))
-    return exchange
 
-def ema(values: List[float], period: int) -> float:
-    if not values:
-        raise ValueError("EMA kräver prisdata.")
-    if len(values) < period:
-        return values[-1]
-    k = 2.0 / (period + 1)
-    result = sum(values[:period]) / period
-    for value in values[period:]:
-        result = value * k + result * (1.0 - k)
-    return result
+def ema(values, period):
+    if not values: raise ValueError('EMA saknar data')
+    if len(values)<period: return float(values[-1])
+    k=2/(period+1); out=sum(values[:period])/period
+    for v in values[period:]: out=v*k+out*(1-k)
+    return out
 
-def rsi(values: List[float], period: int = 14) -> float:
-    if len(values) <= period:
-        return 50.0
-    gains, losses = [], []
-    for old, new in zip(values[-period-1:-1], values[-period:]):
-        change = new - old
-        gains.append(max(change, 0.0))
-        losses.append(max(-change, 0.0))
-    avg_gain = sum(gains) / period
-    avg_loss = sum(losses) / period
-    if avg_loss == 0:
-        return 100.0 if avg_gain > 0 else 50.0
-    rs = avg_gain / avg_loss
-    return 100.0 - 100.0 / (1.0 + rs)
 
-def atr(candles: List[List[float]], period: int = 14) -> float:
-    if len(candles) < 2:
-        raise ValueError("För få candles för ATR.")
-    ranges = []
-    for i in range(1, len(candles)):
-        _, _, high, low, _, _ = candles[i]
-        prev_close = candles[i - 1][4]
-        ranges.append(max(high - low, abs(high - prev_close), abs(low - prev_close)))
-    selected = ranges[-period:]
-    return sum(selected) / len(selected) if selected else 0.0
+def rsi(values, period=14):
+    if len(values)<=period: return 50.0
+    changes=[b-a for a,b in zip(values[-period-1:-1],values[-period:])]
+    gain=sum(max(x,0) for x in changes)/period; loss=sum(max(-x,0) for x in changes)/period
+    if loss==0: return 100.0 if gain>0 else 50.0
+    return 100-(100/(1+gain/loss))
 
-def analyze(candles: List[List[float]]) -> Dict[str, Any]:
-    if len(candles) < 50:
-        raise ValueError(f"Behöver minst 50 candles, fick {len(candles)}.")
-    closes = [float(c[4]) for c in candles]
-    highs = [float(c[2]) for c in candles]
-    lows = [float(c[3]) for c in candles]
-    volumes = [float(c[5]) for c in candles]
-    current = closes[-1]
-    rsi_value = rsi(closes)
-    ema9, ema21, ema50 = ema(closes, 9), ema(closes, 21), ema(closes, 50)
-    pattern = "NEUTRAL"
-    if current < ema21 and current < ema50 and rsi_value < 46 and closes[-1] < closes[-2]:
-        pattern = "DUMP"
-    elif current > ema9 and (current > ema21 or rsi_value < 38 or closes[-1] > closes[-2]):
-        pattern = "BOUNCE"
-    avg_volume = sum(volumes[-20:]) / min(20, len(volumes))
-    return {
-        "current_price": current,
-        "ema9": round(ema9, 6),
-        "ema21": round(ema21, 6),
-        "ema50": round(ema50, 6),
-        "rsi": round(rsi_value, 2),
-        "atr": round(atr(candles), 6),
-        "support": round(min(lows[-30:]), 6),
-        "resistance": round(max(highs[-30:]), 6),
-        "pattern": pattern,
-        "vol_surge": volumes[-1] > avg_volume * 1.3 if avg_volume > 0 else False,
-    }
 
-def get_ai_decision(symbol: str, tech: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Gemini request with bounded HTTP timeout; any failure means no signal."""
-    if not GEMINI_API_KEY:
-        logger.error("GEMINI_API_KEY saknas. Hoppar över %s utan signal.", symbol)
-        return None
-    if genai is None or types is None:
-        logger.error("google-genai SDK saknas. Hoppar över %s utan signal.", symbol)
-        return None
+def analyze(candles):
+    if len(candles)<50: raise ValueError(f'Behöver minst 50 candles, fick {len(candles)}')
+    closes=[float(c[4]) for c in candles]; highs=[float(c[2]) for c in candles]; lows=[float(c[3]) for c in candles]; vols=[float(c[5]) for c in candles]
+    ranges=[]
+    for i in range(1,len(candles)):
+        prev=closes[i-1]; ranges.append(max(highs[i]-lows[i],abs(highs[i]-prev),abs(lows[i]-prev)))
+    avgvol=sum(vols[-20:])/min(20,len(vols))
+    e9,e21,e50=ema(closes,9),ema(closes,21),ema(closes,50); rv=rsi(closes)
+    pattern='NEUTRAL'
+    if closes[-1]<e21 and closes[-1]<e50 and rv<46 and closes[-1]<closes[-2]: pattern='DUMP'
+    elif closes[-1]>e9 and (closes[-1]>e21 or rv<38 or closes[-1]>closes[-2]): pattern='BOUNCE'
+    return {'current_price':closes[-1],'ema9':e9,'ema21':e21,'ema50':e50,'rsi':rv,'atr':sum(ranges[-14:])/len(ranges[-14:]),'support':min(lows[-30:]),'resistance':max(highs[-30:]),'pattern':pattern,'vol_surge':bool(avgvol>0 and vols[-1]>avgvol*1.3)}
 
-    prompt = f"""Du analyserar kryptomarknadsdata. Returnera ENDAST giltig JSON.
-Ingen order ska läggas; detta är en analys för paper trading.
-Data för {symbol}: {json.dumps(tech, ensure_ascii=False)}
-Ge objekt med fälten action (LONG, SHORT eller HOLD), confidence (0..1),
-reasoning (kort svensk text), entry_price (tal), stop_loss (tal), take_profit (tal),
-suggested_leverage (heltal 1..{MAX_LEVERAGE}), pattern (BOUNCE, DUMP eller NONE).
-Om osäker: HOLD. Risk/Reward ska vara minst 5:1 om action är LONG eller SHORT.
-"""
-    started = time.monotonic()
-    logger.info("Gemini-anrop START: %s; timeout %.1f s; modell %s",
-                symbol, GEMINI_TIMEOUT_MS / 1000, GEMINI_MODEL)
-    try:
-        client = genai.Client(
-            api_key=GEMINI_API_KEY,
-            http_options=types.HttpOptions(timeout=GEMINI_TIMEOUT_MS),
-        )
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.1,
-            ),
-        )
-        elapsed = time.monotonic() - started
-        logger.info("Gemini-anrop KLART: %s efter %.1f s", symbol, elapsed)
-        text = getattr(response, "text", None)
-        if not text:
-            logger.error("Gemini gav tomt svar för %s; ingen signal.", symbol)
-            return None
-        decision = json.loads(text)
-        if not isinstance(decision, dict):
-            logger.error("Gemini-svar är inte ett JSON-objekt för %s; ingen signal.", symbol)
-            return None
-        action = str(decision.get("action", "HOLD")).upper()
-        if action not in {"LONG", "SHORT", "HOLD"}:
-            logger.error("Ogiltig action %r för %s; ingen signal.", action, symbol)
-            return None
-        confidence = float(decision.get("confidence", 0.0))
-        if not math.isfinite(confidence) or not 0 <= confidence <= 1:
-            logger.error("Ogiltig confidence för %s; ingen signal.", symbol)
-            return None
-        decision["action"] = action
-        decision["confidence"] = confidence
-        return decision
-    except Exception:
-        logger.exception("Gemini-anrop FEL för %s efter %.1f s; ingen signal.",
-                         symbol, time.monotonic() - started)
-        return None
 
-def write_summary(rows: List[Dict[str, Any]]) -> None:
-    if not GITHUB_STEP_SUMMARY:
-        return
-    try:
-        with open(GITHUB_STEP_SUMMARY, "a", encoding="utf-8") as f:
-            f.write("## ApexFlash — OKX EU diagnostic dry run\n\n")
-            f.write(f"- Timestamp UTC: `{datetime.now(timezone.utc).isoformat()}`\n")
-            f.write("- Mode: `PUBLIC DATA + GEMINI ANALYSIS ONLY; NO ORDERS`\n\n")
-            f.write("| Symbol | Action | Confidence | Price | Result |\n|---|---|---:|---:|---|\n")
-            for row in rows:
-                f.write("| {symbol} | {action} | {confidence} | {price} | {result} |\n".format(**row))
-    except Exception:
-        logger.exception("Kunde inte skriva GitHub Step Summary.")
+def validate_and_size(decision: Dict[str,Any], price: float, balance: float=PAPER_BALANCE_USDT) -> Dict[str,Any]:
+    """Validate a hypothetical idea and calculate size. This never submits orders."""
+    action=str(decision.get('action','HOLD')).upper()
+    conf=float(decision.get('confidence',0))
+    out={'action':action,'confidence':conf,'paper_status':'NO TRADE'}
+    if action not in {'LONG','SHORT','HOLD'}: raise ValueError('Ogiltig action')
+    if not math.isfinite(conf) or not 0<=conf<=1: raise ValueError('Ogiltig confidence')
+    if action=='HOLD' or conf<MIN_CONFIDENCE: out['action']='HOLD'; out['reason']='HOLD eller konfidens under gränsen'; return out
+    entry=float(decision.get('entry_price') or price); sl=float(decision.get('stop_loss') or 0); tp=float(decision.get('take_profit') or 0)
+    if not all(math.isfinite(x) and x>0 for x in (entry,sl,tp,balance)): raise ValueError('Entry/SL/TP/saldo måste vara positiva ändliga tal')
+    if action=='LONG' and not sl<entry<tp: raise ValueError('LONG kräver SL < entry < TP')
+    if action=='SHORT' and not tp<entry<sl: raise ValueError('SHORT kräver TP < entry < SL')
+    risk=abs(entry-sl); reward=abs(tp-entry); rr=reward/risk
+    if rr<4.99: raise ValueError(f'Risk/reward {rr:.2f}:1 understiger 5:1')
+    risk_amount=balance*RISK_PER_TRADE_PCT/100
+    qty=risk_amount/risk
+    notional=qty*entry
+    leverage=math.ceil(notional/balance) if balance>0 else MAX_LEVERAGE
+    if leverage>MAX_LEVERAGE: 
+        # Size is reduced so nominal exposure cannot exceed the configured leverage cap.
+        qty=(balance*MAX_LEVERAGE)/entry
+        risk_amount=qty*risk
+        notional=qty*entry
+        leverage=MAX_LEVERAGE
+    out.update({'entry':entry,'stop_loss':sl,'take_profit':tp,'risk_reward':round(rr,2),'paper_risk_usdt':round(risk_amount,4),'quantity':qty,'notional_usdt':round(notional,4),'estimated_leverage':leverage,'paper_status':'PAPER IDEA ONLY — NO ORDER'})
+    return out
 
-def run_bot() -> int:
-    logger.info("=" * 60)
-    logger.info("APEXFLASH OKX EU — SAFE DIAGNOSTIC RUN")
-    logger.info("UTC: %s", datetime.now(timezone.utc).isoformat())
-    logger.info("Live trading: DISABLED IN THIS BUILD; no order methods called")
-    logger.info("Gemini timeout: %.1f s", GEMINI_TIMEOUT_MS / 1000)
-    exchange = init_exchange()
-    rows = []
-    for symbol in WATCHLIST:
-        logger.info("--- Analyserar %s ---", symbol)
+
+def ask_gemini(symbol, tech):
+    if not GEMINI_API_KEY: raise RuntimeError('GEMINI_API_KEY saknas')
+    if genai is None or types is None: raise RuntimeError('google-genai SDK saknas')
+    prompt=(f'Analysera {symbol} för paper trading. Data: {json.dumps(tech)}. Returnera endast JSON med action (LONG/SHORT/HOLD), confidence (0..1), reasoning, entry_price, stop_loss, take_profit. '
+            'Använd LONG bara vid tydlig studs/stöd, SHORT bara vid tydlig svaghet. För LONG måste stop_loss < entry_price < take_profit; för SHORT take_profit < entry_price < stop_loss. '
+            'Reward/risk måste vara minst 5:1. Om data inte motiverar en giltig setup, svara HOLD. Ingen order ska läggas.')
+    client=genai.Client(api_key=GEMINI_API_KEY,http_options=types.HttpOptions(timeout=GEMINI_TIMEOUT_MS))
+    log.info('Gemini START %s | model=%s | timeout=%ss',symbol,GEMINI_MODEL,GEMINI_TIMEOUT_MS/1000)
+    response=client.models.generate_content(model=GEMINI_MODEL,contents=prompt,config=types.GenerateContentConfig(response_mime_type='application/json',temperature=0.1))
+    if not getattr(response,'text',None): raise RuntimeError('Gemini returnerade tomt svar')
+    parsed=json.loads(response.text)
+    if not isinstance(parsed,dict): raise ValueError('Gemini-svaret är inte ett JSON-objekt')
+    log.info('Gemini KLART %s',symbol)
+    return parsed
+
+
+def write_summary(rows):
+    if not SUMMARY_PATH: return
+    with open(SUMMARY_PATH,'a',encoding='utf-8') as f:
+        f.write('## ApexFlash — OKX EU paper report\n\n')
+        f.write(f'- UTC: `{datetime.now(timezone.utc).isoformat()}`\n- Mode: **PAPER ONLY — NO ORDERS**\n- Paper balance assumption: `{PAPER_BALANCE_USDT:.2f} USDT`\n\n')
+        f.write('| Symbol | Action | Confidence | Price | R:R | Paper status |\n|---|---|---:|---:|---:|---|\n')
+        for r in rows: f.write('| {symbol} | {action} | {confidence} | {price} | {rr} | {status} |\n'.format(**r))
+
+
+def main():
+    log.info('='*58); log.info('APEXFLASH — OKX EU PAPER MODE'); log.info('UTC %s',datetime.now(timezone.utc).isoformat()); log.info('MODE=SIMULATION ONLY; NO ORDER METHODS ARE CALLED'); log.info('Model: %s',GEMINI_MODEL)
+    ex=make_exchange(); rows=[]
+    for symbol in SYMBOLS:
         try:
-            market = exchange.market(symbol)
-            if market.get("type") != "swap":
-                logger.warning("%s finns inte som swap i CCXT-marknaderna; hoppar över.", symbol)
-                rows.append({"symbol": symbol, "action": "SKIP", "confidence": "-", "price": "-", "result": "Not a swap market"})
-                continue
-            candles = exchange.fetch_ohlcv(symbol, timeframe=TIMEFRAME, limit=CANDLE_LIMIT)
-            if not candles or len(candles) < 50:
-                raise RuntimeError(f"För få candles: {len(candles) if candles else 0}")
-            tech = analyze(candles)
-            logger.info("Pris %.6f | RSI %.2f | ATR %.6f | Mönster %s",
-                        tech["current_price"], tech["rsi"], tech["atr"], tech["pattern"])
-            decision = get_ai_decision(symbol, tech)
-            if decision is None:
-                rows.append({"symbol": symbol, "action": "SKIP", "confidence": "-", "price": f"{tech['current_price']:.6f}", "result": "Gemini failed/no signal"})
-                continue
-            action = decision["action"]
-            confidence = decision["confidence"]
-            reasoning = str(decision.get("reasoning", ""))[:300]
-            logger.info("AI-beslut: %s | konfidens %.1f%% | %s",
-                        action, confidence * 100, reasoning)
-            result = "PAPER ONLY — no order submitted"
-            if action in {"LONG", "SHORT"} and confidence < MIN_CONFIDENCE:
-                result = "Below confidence threshold; no signal"
-                action = "HOLD"
-            rows.append({
-                "symbol": symbol,
-                "action": action,
-                "confidence": f"{confidence:.1%}",
-                "price": f"{tech['current_price']:.6f}",
-                "result": result,
-            })
-        except Exception as exc:
-            logger.exception("Fel vid analys av %s; går vidare säkert: %s", symbol, exc)
-            rows.append({"symbol": symbol, "action": "ERROR", "confidence": "-", "price": "-", "result": str(exc)[:160]})
+            m=ex.market(symbol)
+            if m.get('type')!='swap': raise RuntimeError('Instrumentet är inte ett swap-kontrakt')
+            candles=ex.fetch_ohlcv(symbol,timeframe=TIMEFRAME,limit=100)
+            tech=analyze(candles); price=tech['current_price']
+            log.info('%s price=%.8f RSI=%.2f pattern=%s',symbol,price,tech['rsi'],tech['pattern'])
+            decision=ask_gemini(symbol,tech)
+            paper=validate_and_size(decision,price)
+            reason=str(decision.get('reasoning',''))[:240]
+            log.info('%s decision=%s confidence=%.1f%% status=%s %s',symbol,paper['action'],paper['confidence']*100,paper['paper_status'],reason)
+            rows.append({'symbol':symbol,'action':paper['action'],'confidence':f"{paper['confidence']:.1%}",'price':f'{price:.8f}','rr':str(paper.get('risk_reward','—')),'status':paper['paper_status']})
+        except Exception as e:
+            log.exception('Säkert avbrott för %s: %s',symbol,e)
+            rows.append({'symbol':symbol,'action':'ERROR/HOLD','confidence':'—','price':'—','rr':'—','status':str(e)[:120]})
         time.sleep(0.5)
-    write_summary(rows)
-    logger.info("Körning klar. Analyserade %d symboler. Inga order har skickats.", len(rows))
-    return 0
+    write_summary(rows); log.info('Klart: %d symboler. Inga order har skickats.',len(rows)); return 0
 
-if __name__ == "__main__":
-    try:
-        sys.exit(run_bot())
-    except Exception:
-        logger.exception("ApexFlash avbröts på grund av kritiskt fel.")
-        sys.exit(1)
+if __name__=='__main__':
+    try: sys.exit(main())
+    except Exception: log.exception('Kritiskt fel; avbryter utan order.'); sys.exit(1)

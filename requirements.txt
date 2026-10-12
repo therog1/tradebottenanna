@@ -1,9 +1,4 @@
-# Google GenAI SDK (Officiell modern SDK för Gemini Flash)
-google-genai>=0.1.1
-
-# CCXT kryptobörs bibliotek
+google-genai>=1.0.0
 ccxt>=4.2.0
-
-# Övriga verktyg
 python-dotenv>=1.0.0
 requests>=2.31.0

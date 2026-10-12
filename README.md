@@ -1,54 +1,29 @@
-# ⚡ ApexFlash - AI Crypto Futures Trading Bot
+# ApexFlash — OKX EU Paper Test (v1)
 
-En helt automatiserad krypto-tradingbot för **Perpetual Futures** (BTC, ETH, SOL, AVAX, SUI) som körs **100% gratis dygnet runt via GitHub Actions** och fattar intelligenta handelsbeslut via **Google Gemini Flash**.
+Den här versionen är en **paper-testversion** för att verifiera marknadsdata, Gemini-signaler och grundläggande riskberäkningar. Den **skickar aldrig order** och innehåller ingen autentiserad handelsanslutning. Den ersätter inte en färdig live-/demohandelsbot.
 
----
+## Funktioner
+- Läser publika OKX EU swap-marknader via `eea.okx.com`.
+- Analyserar BTC, ETH, SOL, AVAX och SUI med EMA, RSI, ATR, stöd/motstånd och volym.
+- Frågar Gemini (`gemini-3.8-flash` som standard) om LONG/SHORT/HOLD.
+- Validerar riktning på entry/SL/TP och kräver minst 5:1 reward/risk för en paper-idé.
+- Beräknar hypotetisk risk och storlek utifrån antaget paper-saldo; inga pengar flyttas.
+- Skriver rapport i GitHub Actions Step Summary.
 
-## 🔐 Obligatoriska API-nycklar (GitHub Secrets)
+## Installera på GitHub
+1. Ladda ner och packa upp ZIP-filen.
+2. Ladda upp/ersätt filerna i repositoryts rot, inklusive mappen `.github/workflows`.
+3. I **Settings → Secrets and variables → Actions → Secrets**, behåll/skapa `GEMINI_API_KEY`. Ingen Bybit-nyckel behövs i denna paper-version.
+4. Gå till **Actions → ApexFlash OKX EU Paper Test → Run workflow**.
 
-Gå till ditt GitHub-repository -> **Settings** -> **Secrets and variables** -> **Actions** -> Klicka på **New repository secret**.
+## Viktigt
+- Alla workflows är manuella; inget schemalagt körschema är aktiverat.
+- `DRY_RUN=true` och `LIVE_TRADING_ENABLED=false` anges uttryckligen.
+- Koden anropar inte `create_order`, `create_market_order`, `create_limit_order` eller andra ordermetoder.
+- Paper-saldot är endast ett antagande (`PAPER_BALANCE_USDT=1000`), inte ditt verkliga saldo.
+- Beräknad hävstång är en grov exponeringsgräns, inte en likvidationsmodell. Ingen verklig position, SL eller TP skapas.
+- Gemini kan lämna felaktiga nivåer; ogiltiga nivåer avvisas. Ett HOLD är ett normalt resultat.
+- Detta är steg 1. Riktig OKX-demohandel kräver separat verifiering av OKX EEA:s autentiserade API, demokonton, positionsläge, kontraktsspecifikationer och börsbaserade skyddsorder. Livehandel ska inte aktiveras med denna version.
 
-Lägg till dessa tre obligatoriska hemligheter:
-
-| Secret Namn | Var du hittar den | Beskrivning |
-|---|---|---|
-| `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/) | Gratis API-nyckel för Gemini Flash beslutsfattande. |
-| `BYBIT_API_KEY` | Bybit -> API Management | Din Bybit API-nyckel (Behörighet: **Contract / Derivatives - Orders & Positions**). |
-| `BYBIT_API_SECRET` | Bybit -> API Management | Din hemliga Bybit Secret Key. |
-
-### Valfria Secrets:
-
-| Secret Namn | Standardvärde | Beskrivning |
-|---|---|---|
-| `DRY_RUN` | `false` | Sätt till `true` för att provköra utan riktiga pengar. |
-| `RISK_PER_TRADE_PCT` | `1.5` | Risk i procent av totalt USDT-saldo per trade (Compounding). |
-| `TELEGRAM_BOT_TOKEN` | (Tom) | Bot Token från `@BotFather` för live-notiser i Telegram. |
-| `TELEGRAM_CHAT_ID` | (Tom) | Ditt Telegram chat-id för notiser. |
-| `USE_TESTNET` | `false` | Sätt till `true` om du använder Bybit Testnet. |
-
----
-
-## 🎯 Strikta Handelsregler i Boten
-
-1. **Dubbelriktad handel (Long & Short):**
-   - **Bounce (LONG):** Studs på tekniskt stöd / EMA-återtagande med stigande momentum.
-   - **Dump (SHORT):** Prisras under EMA21/EMA50 med säljstyrka och svagt RSI.
-2. **Fast 5:1 Payout-Ratio (Reward-to-Risk):**
-   - Varje entry har en fast Take-Profit (TP) och en snabb Stop-Loss (SL) beräknad **före entry**.
-   - Målvinsten är exakt **5x** den riskerade förlusten.
-3. **Anti-Martingale & Ingen Snittning Neråt:**
-   - Om en position redan är öppen i ett par hoppar boten över paret. Inga utfyllnadspositioner!
-4. **Dynamisk Compounding Positionsstorlek:**
-   - Läser av aktuellt USDT-saldo och anpassar positionsstorleken dynamiskt.
-5. **Dynamisk & Säker Hävstång:**
-   - Anpassas automatiskt mellan 3x och 10x så att likvidationspriset alltid ligger tryggt bortom Stop-Loss.
-
----
-
-## 🚀 Kom igång & Provkör
-
-1. Gå till fliken **Actions** i ditt GitHub-repository.
-2. Välj **ApexFlash Crypto Futures Bot** i menyn till vänster.
-3. Klicka på **Run workflow** (du kan bocka i `Dry Run` för första testen).
-4. Boten körs omedelbart, skannar marknaden, beräknar 5:1 R:R nivåer och publicerar en Markdown-rapport i **Step Summary**.
-5. Därefter körs boten automatiskt var 15:e minut dygnet runt!
+## Lokala tester
+`python -m unittest discover -s tests -v`
