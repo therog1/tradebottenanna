@@ -55,7 +55,8 @@ API_KEY = os.getenv("BYBIT_API_KEY") or os.getenv("EXCHANGE_API_KEY", "")
 API_SECRET = os.getenv("BYBIT_API_SECRET") or os.getenv("EXCHANGE_API_SECRET", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 USE_TESTNET = os.getenv("USE_TESTNET", "false").lower() in ("true", "1", "yes")
-DRY_RUN = os.getenv("DRY_RUN", "false").lower() in ("true", "1", "yes") or not API_KEY
+LIVE_TRADING_ENABLED = os.getenv("LIVE_TRADING_ENABLED", "false").lower() in ("true", "1", "yes")
+DRY_RUN = (os.getenv("DRY_RUN", "true").lower() in ("true", "1", "yes") or not API_KEY or not LIVE_TRADING_ENABLED)
 
 # Risk- och strategiparametrar
 # "The average win was about 4% of the balance, the average loss about 0.8%. Five to one."
@@ -111,12 +112,8 @@ def init_exchange() -> ccxt.Exchange:
         "apiKey": API_KEY,
         "secret": API_SECRET,
         "enableRateLimit": True,
-        "urls": {
-            "api": {
-                "public": "https://api.bybit.nl",
-                "private": "https://api.bybit.nl",
-            }
-        },
+        # Do not hardcode a regional endpoint. CCXT uses the exchange defaults.
+        # Only override this after verifying the correct endpoint for your account.
         "options": {
             "defaultType": "swap",  # Perpetual futures
             "adjustForTimeDifference": True,
@@ -132,8 +129,10 @@ def init_exchange() -> ccxt.Exchange:
 
     try:
         exchange.load_markets()
+        if not exchange.markets:
+            raise RuntimeError("Börsen returnerade ingen marknadsmetadata.")
     except Exception as e:
-        logger.warning(f"Kunde inte ladda marknader online: {e}. Fortsätter med standardvärden.")
+        raise RuntimeError(f"Kan inte ladda marknader; avbryter säkert: {e}") from e
     return exchange
 
 
@@ -258,9 +257,9 @@ def get_ai_decision(symbol: str, tech: Dict[str, Any], balance: float) -> Option
     Anropar Google Gemini Flash via nya google-genai SDK för att få en strukturerad
     handelsrekommendation med strikt 5:1 R:R.
     """
-    if not GEMINI_API_KEY:
-        logger.warning("Ingen GEMINI_API_KEY angiven. Använder regelbaserad fallback-motor.")
-        return fallback_decision_engine(symbol, tech, balance)
+    if not GEMINI_API_KEY or genai is None:
+        logger.error("Gemini saknas eller SDK är inte installerad; avstår från handel.")
+        return None
 
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
@@ -314,8 +313,8 @@ Svara EXKLUSIVT med ett JSON-objekt:
         return decision
 
     except Exception as e:
-        logger.error(f"Fel vid Gemini Flash anrop för {symbol}: {e}")
-        return fallback_decision_engine(symbol, tech, balance)
+        logger.error(f"Fel vid Gemini-anrop för {symbol}; avstår från handel: {e}")
+        return None
 
 
 def fallback_decision_engine(symbol: str, tech: Dict[str, Any], balance: float) -> Dict[str, Any]:
@@ -456,7 +455,9 @@ def has_open_position(exchange: ccxt.Exchange, symbol: str) -> bool:
                 logger.info(f"🚫 [SPÄRR] Öppen position existerar redan för {symbol} ({size} kontrakt). Hoppar över.")
                 return True
     except Exception as e:
-        logger.warning(f"Kunde inte hämta befintliga positioner för {symbol}: {e}")
+        raise RuntimeError(
+            f"Kan inte verifiera öppna positioner för {symbol}; avbryter säkert."
+        ) from e
 
     return False
 
@@ -497,7 +498,8 @@ def execute_trade(
             exchange.set_leverage(leverage, symbol)
             logger.info(f"Hävstång satt till {leverage}x för {symbol}")
         except Exception as e:
-            logger.warning(f"Kunde inte sätta hävstång: {e}")
+            logger.error(f"Kan inte bekräfta hävstång; order avbryts: {e}")
+            return False
 
         # 2. Avrunda antal till börsens tillåtna precision och hantera minimum-gränser
         market = exchange.market(symbol)
@@ -565,23 +567,27 @@ def run_bot():
     logger.info("=" * 60)
     logger.info("⚡ APEXFLASH TRADING BOT STARTAR ⚡")
     logger.info(f"Tidpunkt: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
-    logger.info(f"Börs: {EXCHANGE_ID.upper()} | Testnet: {USE_TESTNET} | Dry Run: {DRY_RUN}")
+    logger.info(
+        f"Börs: {EXCHANGE_ID.upper()} | Testnet: {USE_TESTNET} | "
+        f"Dry Run: {DRY_RUN} | Live trading enabled: {LIVE_TRADING_ENABLED}"
+    )
     logger.info(f"Risk per trade: {RISK_PER_TRADE_PCT}% | Payout-ratio: {REWARD_RISK_RATIO}:1")
     logger.info("=" * 60)
 
     exchange = init_exchange()
 
-    # Hämta kontosaldo
-    balance = 1000.0  # Fallback
+    # Hämta saldo: simulerat endast i dry run; live kräver verifierat saldo.
+    balance = 1000.0
     if not DRY_RUN:
         try:
             bal_data = exchange.fetch_balance()
-            usdt_bal = bal_data.get("USDT", {}).get("free", 0.0)
-            if usdt_bal and usdt_bal > 0:
-                balance = float(usdt_bal)
-                logger.info(f"Hämtade aktuellt USDT-saldo: ${balance:.2f} USDT")
+            usdt_bal = float(bal_data.get("USDT", {}).get("free", 0.0) or 0.0)
+            if not math.isfinite(usdt_bal) or usdt_bal <= 0:
+                raise RuntimeError("Börsen returnerade inget positivt, giltigt USDT-saldo.")
+            balance = usdt_bal
+            logger.info(f"Hämtade aktuellt USDT-saldo: ${balance:.2f} USDT")
         except Exception as e:
-            logger.warning(f"Kunde inte hämta saldo: {e}. Använder default ${balance}.")
+            raise RuntimeError(f"Kan inte verifiera kontosaldo; avbryter säkert: {e}") from e
     else:
         logger.info(f"Dry Run simulerat saldo: ${balance:.2f} USDT")
 
@@ -726,4 +732,8 @@ def run_bot():
 
 
 if __name__ == "__main__":
-    run_bot()
+    try:
+        run_bot()
+    except Exception:
+        logger.exception("ApexFlash avbröts på grund av ett kritiskt fel.")
+        sys.exit(1)
