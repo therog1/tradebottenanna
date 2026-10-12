@@ -113,8 +113,8 @@ def init_exchange() -> ccxt.Exchange:
         "enableRateLimit": True,
         "urls": {
             "api": {
-                "public": "https://api.bytick.com",
-                "private": "https://api.bytick.com",
+                "public": "https://api.bybit.nl",
+                "private": "https://api.bybit.nl",
             }
         },
         "options": {
@@ -618,16 +618,14 @@ def run_bot():
             except Exception:
                 continue
 
-        # Direkt Bybit v5 REST API fallback om CCXT symbol-mapping krånglar
+        # Direkt Bybit REST API fallback (api.bybit.nl)
         if not candles or len(candles) < 30:
             try:
                 clean_sym = symbol.replace("/", "").replace(":USDT", "")
-                url = f"https://api.bytick.com/v5/market/kline?category=linear&symbol={clean_sym}&interval=15&limit=50"
+                url = f"https://api.bybit.nl/v5/market/kline?category=linear&symbol={clean_sym}&interval=15&limit=50"
                 resp = requests.get(url, timeout=5).json()
                 if resp.get("retCode") == 0 and resp.get("result", {}).get("list"):
                     raw_list = resp["result"]["list"]
-                    # Bybit v5 kline format: [startTime, openPrice, highPrice, lowPrice, closePrice, volume, turnover]
-                    # Bybit returnerar nyaste först, vi vänder den så äldsta är först
                     raw_list.reverse()
                     candles = [
                         [
@@ -641,7 +639,29 @@ def run_bot():
                         for item in raw_list
                     ]
             except Exception as e:
-                logger.error(f"Kunde inte hämta klines för {symbol}: {e}")
+                logger.warning(f"Bybit NL kline misslyckades för {symbol}: {e}")
+
+        # Ultimat Binance backup för 100% driftsäkerhet vid CloudFront störning
+        if not candles or len(candles) < 30:
+            try:
+                clean_sym = symbol.replace("/", "").replace(":USDT", "")
+                binance_url = f"https://api.binance.com/api/v3/klines?symbol={clean_sym}&interval=15m&limit=50"
+                b_resp = requests.get(binance_url, timeout=5).json()
+                if isinstance(b_resp, list) and len(b_resp) >= 30:
+                    candles = [
+                        [
+                            int(item[0]),
+                            float(item[1]),
+                            float(item[2]),
+                            float(item[3]),
+                            float(item[4]),
+                            float(item[5]),
+                        ]
+                        for item in b_resp
+                    ]
+                    logger.info(f"Hämtade 15m ljus för {symbol} via Binance backup feed")
+            except Exception as e:
+                logger.error(f"Kunde inte hämta Binance backup för {symbol}: {e}")
 
         if not candles or len(candles) < 30:
             logger.warning(f"Otillräcklig candle-data för {symbol}. Hoppar över.")
