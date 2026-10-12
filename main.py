@@ -1,77 +1,50 @@
 #!/usr/bin/env python3
 """
-ApexFlash - AI Futures Trading Bot (Gemini Flash & CCXT)
---------------------------------------------------------
-Automatiserad tradingbot för perpetual futures på Bybit / Binance.
-Handlar BTC/USDT, ETH/USDT, SOL/USDT, AVAX/USDT, SUI/USDT.
-
-Strikta regler implementerade:
-1. Både LONG (Bounce) och SHORT (Dump) baserat på teknisk analys och Gemini Flash.
-2. Fast Stop-Loss (SL) och Take-Profit (TP) beräknas FÖRE entry.
-3. EXAKT 5:1 Payout-ratio (Reward-to-Risk).
-4. INGA utfyllnadspositioner eller martingale (aldrig snitta ner sig).
-5. Dynamisk positionsstorlek baserad på aktuellt kontosaldo (compounding).
-6. Dynamisk hävstång anpassad efter SL-avstånd och plånbokssäkerhet.
-7. Optimerad för GitHub Actions med hemliga miljövariabler och Step Summary.
+ApexFlash — OKX EU dry-run build.
+This build is deliberately fail-closed: it reads public market data and asks Gemini
+for a decision, but it NEVER submits orders. Live order execution must be implemented
+and tested separately against OKX demo before being enabled.
 """
-
+import json
+import logging
+import math
 import os
 import sys
-import json
-import math
 import time
-import logging
-from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
-# Tredjepartsbibliotek
 import ccxt
 import requests
 from dotenv import load_dotenv
 
-# Google GenAI SDK (Officiell modern SDK)
 try:
     from google import genai
     from google.genai import types
 except ImportError:
     genai = None
+    types = None
 
-# Ladda .env vid lokal körning
 load_dotenv()
 
-# Loggkonfiguration
 logging.basicConfig(
-    level=logging.INFO,
+    level=os.getenv("LOG_LEVEL", "INFO"),
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger("ApexFlash")
 
-# ==============================================================================
-# KONFIGURATION & MILJÖVARIABLER
-# ==============================================================================
-EXCHANGE_ID = os.getenv("EXCHANGE_ID", "bybit").lower()
-API_KEY = os.getenv("BYBIT_API_KEY") or os.getenv("EXCHANGE_API_KEY", "")
-API_SECRET = os.getenv("BYBIT_API_SECRET") or os.getenv("EXCHANGE_API_SECRET", "")
+# Safe defaults. Live execution is intentionally not implemented in this build.
+EXCHANGE_ID = os.getenv("EXCHANGE_ID", "okx").lower()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-USE_TESTNET = os.getenv("USE_TESTNET", "false").lower() in ("true", "1", "yes")
-LIVE_TRADING_ENABLED = os.getenv("LIVE_TRADING_ENABLED", "false").lower() in ("true", "1", "yes")
-DRY_RUN = (os.getenv("DRY_RUN", "true").lower() in ("true", "1", "yes") or not API_KEY or not LIVE_TRADING_ENABLED)
-
-# Risk- och strategiparametrar
-# "The average win was about 4% of the balance, the average loss about 0.8%. Five to one."
-RISK_PER_TRADE_PCT = float(os.getenv("RISK_PER_TRADE_PCT", "0.8"))  # 0.8% genomsnittlig förlust per SL
-REWARD_RISK_RATIO = 5.0                                             # Strikt 5:1 Payout Ratio (0.8% risk -> 4.0% win)
-MIN_CONFIDENCE = float(os.getenv("MIN_CONFIDENCE", "0.72"))        # 72% AI-konfidens för entry
-MAX_LEVERAGE = int(os.getenv("MAX_LEVERAGE", "10"))                # Max 10x hävstång
-MIN_LEVERAGE = int(os.getenv("MIN_LEVERAGE", "3"))                 # Min 3x hävstång
-TIMEFRAME = os.getenv("TIMEFRAME", "15m")                          # 15m candles
-
-# Telegram (Valfritt)
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
-
-# Tillgångar som övervakas
+TIMEFRAME = os.getenv("TIMEFRAME", "15m")
+CANDLE_LIMIT = 100
+GEMINI_TIMEOUT_MS = max(5000, min(int(os.getenv("GEMINI_TIMEOUT_MS", "30000")), 60000))
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+MIN_CONFIDENCE = float(os.getenv("MIN_CONFIDENCE", "0.72"))
+RISK_PER_TRADE_PCT = float(os.getenv("RISK_PER_TRADE_PCT", "0.8"))
+MAX_LEVERAGE = int(os.getenv("MAX_LEVERAGE", "10"))
+MIN_LEVERAGE = int(os.getenv("MIN_LEVERAGE", "3"))
 WATCHLIST = [
     "BTC/USDT:USDT",
     "ETH/USDT:USDT",
@@ -79,661 +52,221 @@ WATCHLIST = [
     "AVAX/USDT:USDT",
     "SUI/USDT:USDT",
 ]
-
-# GitHub Step Summary fil
 GITHUB_STEP_SUMMARY = os.getenv("GITHUB_STEP_SUMMARY")
 
-
-# ==============================================================================
-# TELEGRAM NOTIS
-# ==============================================================================
-def send_telegram_alert(message: str) -> None:
-    """Skickar status eller orderlarm till Telegram."""
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        return
-    try:
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "Markdown"}
-        requests.post(url, json=payload, timeout=5)
-    except Exception as e:
-        logger.warning(f"Kunde inte skicka Telegram-notis: {e}")
-
-
-# ==============================================================================
-# BÖRSINITIERING (CCXT)
-# ==============================================================================
 def init_exchange() -> ccxt.Exchange:
-    """Initierar CCXT-börsinstans (Bybit som default)."""
-    exchange_class = getattr(ccxt, EXCHANGE_ID, None)
-    if not exchange_class:
-        raise ValueError(f"Ogiltig börs: {EXCHANGE_ID}")
-
-    config = {
-        "apiKey": API_KEY,
-        "secret": API_SECRET,
+    """Public OKX EU market-data connection; no API keys needed for dry run."""
+    if EXCHANGE_ID != "okx":
+        raise RuntimeError(f"Den här patchen är avsedd för OKX, inte {EXCHANGE_ID!r}.")
+    exchange = ccxt.okx({
         "enableRateLimit": True,
-        # Do not hardcode a regional endpoint. CCXT uses the exchange defaults.
-        # Only override this after verifying the correct endpoint for your account.
+        "timeout": 10000,
         "options": {
-            "defaultType": "swap",  # Perpetual futures
-            "adjustForTimeDifference": True,
+            "defaultType": "swap",
+            "fetchCurrencies": False,
         },
-    }
-
-    exchange = exchange_class(config)
-    if USE_TESTNET:
-        exchange.set_sandbox_mode(True)
-        logger.info(f"Kör mot {EXCHANGE_ID.upper()} TESTNET")
-    else:
-        logger.info(f"Kör mot {EXCHANGE_ID.upper()} MAINNET (Dry Run: {DRY_RUN})")
-
-    try:
-        exchange.load_markets()
-        if not exchange.markets:
-            raise RuntimeError("Börsen returnerade ingen marknadsmetadata.")
-    except Exception as e:
-        raise RuntimeError(f"Kan inte ladda marknader; avbryter säkert: {e}") from e
+    })
+    # OKX EEA API hostname observed working from GitHub Actions public-market test.
+    exchange.hostname = "eea.okx.com"
+    logger.info("Laddar publika OKX EU-marknader (timeout 10 s)...")
+    markets = exchange.load_markets()
+    if not markets:
+        raise RuntimeError("OKX returnerade inga marknader; avbryter.")
+    logger.info("OKX-marknader laddade: %d", len(markets))
     return exchange
 
+def ema(values: List[float], period: int) -> float:
+    if not values:
+        raise ValueError("EMA kräver prisdata.")
+    if len(values) < period:
+        return values[-1]
+    k = 2.0 / (period + 1)
+    result = sum(values[:period]) / period
+    for value in values[period:]:
+        result = value * k + result * (1.0 - k)
+    return result
 
-# ==============================================================================
-# TEKNISK ANALYS & INDIKATORER
-# ==============================================================================
-def calculate_ema(prices: List[float], period: int) -> List[float]:
-    """Beräknar Exponential Moving Average (EMA)."""
-    if len(prices) < period:
-        return prices
-    k = 2 / (period + 1)
-    ema_list = []
-    ema = sum(prices[:period]) / period
-    ema_list.append(ema)
-    for price in prices[period:]:
-        ema = (price * k) + (ema * (1 - k))
-        ema_list.append(ema)
-    return ema_list
-
-
-def calculate_rsi(closes: List[float], period: int = 14) -> float:
-    """Beräknar Relative Strength Index (RSI)."""
-    if len(closes) <= period:
+def rsi(values: List[float], period: int = 14) -> float:
+    if len(values) <= period:
         return 50.0
-    gains = []
-    losses = []
-    for i in range(1, period + 1):
-        diff = closes[i] - closes[i - 1]
-        if diff >= 0:
-            gains.append(diff)
-            losses.append(0.0)
-        else:
-            gains.append(0.0)
-            losses.append(abs(diff))
-
+    gains, losses = [], []
+    for old, new in zip(values[-period-1:-1], values[-period:]):
+        change = new - old
+        gains.append(max(change, 0.0))
+        losses.append(max(-change, 0.0))
     avg_gain = sum(gains) / period
     avg_loss = sum(losses) / period
-
-    for i in range(period + 1, len(closes)):
-        diff = closes[i] - closes[i - 1]
-        gain = diff if diff > 0 else 0.0
-        loss = abs(diff) if diff < 0 else 0.0
-        avg_gain = (avg_gain * (period - 1) + gain) / period
-        avg_loss = (avg_loss * (period - 1) + loss) / period
-
     if avg_loss == 0:
-        return 100.0
+        return 100.0 if avg_gain > 0 else 50.0
     rs = avg_gain / avg_loss
-    return 100.0 - (100.0 / (1.0 + rs))
+    return 100.0 - 100.0 / (1.0 + rs)
 
-
-def calculate_atr(candles: List[List[float]], period: int = 14) -> float:
-    """Beräknar Average True Range (ATR)."""
-    if len(candles) < period + 1:
-        return candles[-1][4] * 0.015  # Fallback 1.5%
-    trs = []
+def atr(candles: List[List[float]], period: int = 14) -> float:
+    if len(candles) < 2:
+        raise ValueError("För få candles för ATR.")
+    ranges = []
     for i in range(1, len(candles)):
-        high = candles[i][2]
-        low = candles[i][3]
+        _, _, high, low, _, _ = candles[i]
         prev_close = candles[i - 1][4]
-        tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
-        trs.append(tr)
-    recent_trs = trs[-period:]
-    return sum(recent_trs) / len(recent_trs)
+        ranges.append(max(high - low, abs(high - prev_close), abs(low - prev_close)))
+    selected = ranges[-period:]
+    return sum(selected) / len(selected) if selected else 0.0
 
-
-def analyze_market_snapshot(candles: List[List[float]]) -> Dict[str, Any]:
-    """
-    Analyserar 50 senaste candles och detekterar Bounce/Dump mönster samt nyckelnivåer.
-    Candle-format: [timestamp, open, high, low, close, volume]
-    """
-    closes = [c[4] for c in candles]
-    highs = [c[2] for c in candles]
-    lows = [c[3] for c in candles]
-    volumes = [c[5] for c in candles]
-
-    current_price = closes[-1]
-    ema9 = calculate_ema(closes, 9)[-1]
-    ema21 = calculate_ema(closes, 21)[-1]
-    ema50 = calculate_ema(closes, 50)[-1]
-    rsi = calculate_rsi(closes, 14)
-    atr = calculate_atr(candles, 14)
-
-    # 50-period Swing Support och Resistance
-    support = min(lows[-30:])
-    resistance = max(highs[-30:])
-
-    # Volymökning?
-    avg_vol = sum(volumes[-20:]) / 20.0
-    vol_surge = volumes[-1] > (avg_vol * 1.3)
-
-    # Dump-mönster: pris faller under EMA21 och EMA50 med röd momentum och volym
-    is_dump = (current_price < ema21 and current_price < ema50 and rsi < 46 and closes[-1] < closes[-2])
-    # Bounce-mönster: pris studsar vid support eller över EMA9 med vändande RSI
-    is_bounce = (current_price > ema9 and (current_price > ema21 or rsi < 38 or closes[-1] > closes[-2]))
-
+def analyze(candles: List[List[float]]) -> Dict[str, Any]:
+    if len(candles) < 50:
+        raise ValueError(f"Behöver minst 50 candles, fick {len(candles)}.")
+    closes = [float(c[4]) for c in candles]
+    highs = [float(c[2]) for c in candles]
+    lows = [float(c[3]) for c in candles]
+    volumes = [float(c[5]) for c in candles]
+    current = closes[-1]
+    rsi_value = rsi(closes)
+    ema9, ema21, ema50 = ema(closes, 9), ema(closes, 21), ema(closes, 50)
     pattern = "NEUTRAL"
-    if is_dump and not is_bounce:
+    if current < ema21 and current < ema50 and rsi_value < 46 and closes[-1] < closes[-2]:
         pattern = "DUMP"
-    elif is_bounce and not is_dump:
+    elif current > ema9 and (current > ema21 or rsi_value < 38 or closes[-1] > closes[-2]):
         pattern = "BOUNCE"
-
+    avg_volume = sum(volumes[-20:]) / min(20, len(volumes))
     return {
-        "current_price": current_price,
-        "ema9": round(ema9, 4),
-        "ema21": round(ema21, 4),
-        "ema50": round(ema50, 4),
-        "rsi": round(rsi, 2),
-        "atr": round(atr, 4),
-        "support": round(support, 4),
-        "resistance": round(resistance, 4),
+        "current_price": current,
+        "ema9": round(ema9, 6),
+        "ema21": round(ema21, 6),
+        "ema50": round(ema50, 6),
+        "rsi": round(rsi_value, 2),
+        "atr": round(atr(candles), 6),
+        "support": round(min(lows[-30:]), 6),
+        "resistance": round(max(highs[-30:]), 6),
         "pattern": pattern,
-        "vol_surge": vol_surge,
+        "vol_surge": volumes[-1] > avg_volume * 1.3 if avg_volume > 0 else False,
     }
 
-
-# ==============================================================================
-# GEMINI FLASH AI BESLUTSFATTANDE
-# ==============================================================================
-def get_ai_decision(symbol: str, tech: Dict[str, Any], balance: float) -> Optional[Dict[str, Any]]:
-    """
-    Anropar Google Gemini Flash via nya google-genai SDK för att få en strukturerad
-    handelsrekommendation med strikt 5:1 R:R.
-    """
-    if not GEMINI_API_KEY or genai is None:
-        logger.error("Gemini saknas eller SDK är inte installerad; avstår från handel.")
+def get_ai_decision(symbol: str, tech: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Gemini request with bounded HTTP timeout; any failure means no signal."""
+    if not GEMINI_API_KEY:
+        logger.error("GEMINI_API_KEY saknas. Hoppar över %s utan signal.", symbol)
+        return None
+    if genai is None or types is None:
+        logger.error("google-genai SDK saknas. Hoppar över %s utan signal.", symbol)
         return None
 
+    prompt = f"""Du analyserar kryptomarknadsdata. Returnera ENDAST giltig JSON.
+Ingen order ska läggas; detta är en analys för paper trading.
+Data för {symbol}: {json.dumps(tech, ensure_ascii=False)}
+Ge objekt med fälten action (LONG, SHORT eller HOLD), confidence (0..1),
+reasoning (kort svensk text), entry_price (tal), stop_loss (tal), take_profit (tal),
+suggested_leverage (heltal 1..{MAX_LEVERAGE}), pattern (BOUNCE, DUMP eller NONE).
+Om osäker: HOLD. Risk/Reward ska vara minst 5:1 om action är LONG eller SHORT.
+"""
+    started = time.monotonic()
+    logger.info("Gemini-anrop START: %s; timeout %.1f s; modell %s",
+                symbol, GEMINI_TIMEOUT_MS / 1000, GEMINI_MODEL)
     try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        prompt = f"""Du är en professionell kvantitativ kryptotradingbot för perpetual futures.
-HUVUDKONCEPT OCH PERSONLIGHET:
-- "A red hour and a green hour are both just setups."
-- Dump = Short, Bounce = Long. Ingen riktningsbias.
-- Varje entry har sin Take-Profit och Stop-Loss beräknad FÖRE den öppnas (ingen "let's see where it goes").
-- Payout-ratio ska vara EXAKT 5:1 (Reward-to-Risk). Snittförlust vid SL: 0.8% av saldot. Snittvinst vid TP: 4.0% av saldot.
-- Klipper förluster snabbt ("Cuts a loser fast and never averages down").
-- Inga utfyllnadspositioner eller martingale.
-- Endast signaler med hög övertygelse (confidence >= {MIN_CONFIDENCE}) godkänns. Om chop eller osäkerhet: välj "HOLD".
-
-MARKNADSDATA FÖR {symbol}:
-- Aktuellt pris: {tech['current_price']}
-- EMA 9: {tech['ema9']}
-- EMA 21: {tech['ema21']}
-- EMA 50: {tech['ema50']}
-- RSI (14): {tech['rsi']}
-- ATR (14): {tech['atr']}
-- Senaste Support: {tech['support']}
-- Senaste Resistans: {tech['resistance']}
-- Detekterat mönster: {tech['pattern']}
-- Volymökning: {tech['vol_surge']}
-- Tillgängligt kapital: {balance} USDT
-
-Svara EXKLUSIVT med ett JSON-objekt:
-{{
-  "symbol": "{symbol}",
-  "action": "LONG" eller "SHORT" eller "HOLD",
-  "pattern": "BOUNCE" eller "DUMP" eller "NONE",
-  "confidence": 0.0 till 1.0,
-  "entry_price": tal,
-  "stop_loss": tal,
-  "take_profit": tal,
-  "reward_risk_ratio": 5.0,
-  "suggested_leverage": heltal mellan {MIN_LEVERAGE} och {MAX_LEVERAGE},
-  "reasoning": "Kort motivering på svenska (max 2 meningar)"
-}}"""
-
+        client = genai.Client(
+            api_key=GEMINI_API_KEY,
+            http_options=types.HttpOptions(timeout=GEMINI_TIMEOUT_MS),
+        )
         response = client.models.generate_content(
-            model="gemini-3.8-flash",
+            model=GEMINI_MODEL,
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 temperature=0.1,
             ),
         )
-
-        decision = json.loads(response.text)
-        return decision
-
-    except Exception as e:
-        logger.error(f"Fel vid Gemini-anrop för {symbol}; avstår från handel: {e}")
-        return None
-
-
-def fallback_decision_engine(symbol: str, tech: Dict[str, Any], balance: float) -> Dict[str, Any]:
-    """Deterministisk fallback-motor om Gemini API är otillgängligt."""
-    price = tech["current_price"]
-    atr = tech["atr"]
-    pattern = tech["pattern"]
-    sl_dist = atr * 1.5
-
-    if pattern == "BOUNCE":
-        entry = price
-        sl = entry - sl_dist
-        tp = entry + (5.0 * sl_dist)
-        return {
-            "symbol": symbol,
-            "action": "LONG",
-            "pattern": "BOUNCE",
-            "confidence": 0.78,
-            "entry_price": entry,
-            "stop_loss": sl,
-            "take_profit": tp,
-            "reward_risk_ratio": 5.0,
-            "suggested_leverage": 5,
-            "reasoning": "Fallback: Teknisk studs över EMA9 med stöd och positiv RSI.",
-        }
-    elif pattern == "DUMP":
-        entry = price
-        sl = entry + sl_dist
-        tp = entry - (5.0 * sl_dist)
-        return {
-            "symbol": symbol,
-            "action": "SHORT",
-            "pattern": "DUMP",
-            "confidence": 0.78,
-            "entry_price": entry,
-            "stop_loss": sl,
-            "take_profit": tp,
-            "reward_risk_ratio": 5.0,
-            "suggested_leverage": 5,
-            "reasoning": "Fallback: Teknisk dump under EMA21/EMA50 med säljstyrka.",
-        }
-
-    return {
-        "symbol": symbol,
-        "action": "HOLD",
-        "pattern": "NONE",
-        "confidence": 0.50,
-        "entry_price": price,
-        "stop_loss": price,
-        "take_profit": price,
-        "reward_risk_ratio": 5.0,
-        "suggested_leverage": 3,
-        "reasoning": "Konsolidering utan tydlig trendbrytning. Avvaktar.",
-    }
-
-
-# ==============================================================================
-# RISK- & POSITIONSBERÄKNING (COMPOUNDING & 5:1 R:R)
-# ==============================================================================
-def calculate_order_sizing(
-    balance: float,
-    entry_price: float,
-    stop_loss: float,
-    action: str,
-) -> Optional[Dict[str, Any]]:
-    """
-    Dynamisk positionsstorlek baserad på fast % risk av kontosaldo.
-    Garanterar strikt 5:1 R:R och beräknar säker hävstång.
-    """
-    sl_distance = abs(entry_price - stop_loss)
-    if sl_distance <= 0:
-        logger.warning("Ogiltigt Stop-Loss avstånd (0).")
-        return None
-
-    # Procentuellt avstånd till SL
-    sl_pct = sl_distance / entry_price
-
-    # Säkerhetskontroll: SL får inte vara orealistiskt tight (<0.3%) eller för vid (>6%)
-    if sl_pct < 0.003 or sl_pct > 0.06:
-        logger.warning(f"SL avstånd ({sl_pct*100:.2f}%) utanför säkerhetsintervall (0.3% - 6.0%). Avbryter.")
-        return None
-
-    # Beräkna exakt Take Profit med 5:1 R:R
-    if action == "LONG":
-        take_profit = entry_price + (REWARD_RISK_RATIO * sl_distance)
-    else:  # SHORT
-        take_profit = entry_price - (REWARD_RISK_RATIO * sl_distance)
-
-    # Dollarbelopp vi riskerar vid SL-träff (Compounding baserat på aktuellt saldo)
-    risk_usd = balance * (RISK_PER_TRADE_PCT / 100.0)
-
-    # Total positionens värde i USDT så att förlusten vid SL = exakt risk_usd
-    position_value_usdt = risk_usd / sl_pct
-
-    # Beräkna adaptiv hävstång:
-    # Marginalen som krävs = position_value_usdt / leverage
-    # Vi vill att marginalen inte överstiger max 30% av kontosaldot
-    target_leverage = math.ceil(position_value_usdt / (balance * 0.30))
-    leverage = max(MIN_LEVERAGE, min(MAX_LEVERAGE, int(target_leverage)))
-
-    # Antal coins att köpa/sälja
-    coin_quantity = position_value_usdt / entry_price
-
-    # Potentiell vinst vid TP (5 x risk_usd)
-    target_profit_usd = risk_usd * REWARD_RISK_RATIO
-
-    return {
-        "entry_price": entry_price,
-        "stop_loss": stop_loss,
-        "take_profit": take_profit,
-        "sl_distance": sl_distance,
-        "sl_pct": sl_pct,
-        "risk_usd": risk_usd,
-        "target_profit_usd": target_profit_usd,
-        "position_value_usdt": position_value_usdt,
-        "coin_quantity": coin_quantity,
-        "leverage": leverage,
-        "balance": balance,
-    }
-
-
-# ==============================================================================
-# KONTROLL AV BEFINTLIGA POSITIONER (ANTI-AVERAGING / ANTI-MARTINGALE)
-# ==============================================================================
-def has_open_position(exchange: ccxt.Exchange, symbol: str) -> bool:
-    """
-    STRIKT REGEL: Kontrollerar om det redan finns en öppen position för symbolen.
-    Om en position redan existerar, öppnas INGEN ny (ingen snittning / martingale).
-    """
-    if DRY_RUN:
-        return False
-
-    try:
-        positions = exchange.fetch_positions([symbol])
-        for pos in positions:
-            size = float(pos.get("contracts", 0) or pos.get("size", 0) or 0)
-            if size > 0:
-                logger.info(f"🚫 [SPÄRR] Öppen position existerar redan för {symbol} ({size} kontrakt). Hoppar över.")
-                return True
-    except Exception as e:
-        raise RuntimeError(
-            f"Kan inte verifiera öppna positioner för {symbol}; avbryter säkert."
-        ) from e
-
-    return False
-
-
-# ==============================================================================
-# ORDEREKSEKVERING (BRACKET ORDER MED TP/SL)
-# ==============================================================================
-def execute_trade(
-    exchange: ccxt.Exchange,
-    symbol: str,
-    action: str,
-    plan: Dict[str, Any],
-) -> bool:
-    """
-    Placerar entry-order och tillhörande TP/SL order på börsen.
-    """
-    entry_side = "buy" if action == "LONG" else "sell"
-    exit_side = "sell" if action == "LONG" else "buy"
-    qty = plan["coin_quantity"]
-    leverage = plan["leverage"]
-    tp = plan["take_profit"]
-    sl = plan["stop_loss"]
-
-    logger.info("=" * 60)
-    logger.info(f"🚀 EXEKVERING: {action} {symbol}")
-    logger.info(f"   Entry: {plan['entry_price']:.4f} | SL: {sl:.4f} | TP (5:1): {tp:.4f}")
-    logger.info(f"   Volym: {qty:.4f} | Värde: ${plan['position_value_usdt']:.2f} USDT")
-    logger.info(f"   Hävstång: {leverage}x | Risk: ${plan['risk_usd']:.2f} | Målvinst: ${plan['target_profit_usd']:.2f}")
-    logger.info("=" * 60)
-
-    if DRY_RUN:
-        logger.info("🧪 [DRY RUN LÄGE] Ingen verklig order skickad till börsen.")
-        return True
-
-    try:
-        # 1. Ställ in hävstång på börsen
-        try:
-            exchange.set_leverage(leverage, symbol)
-            logger.info(f"Hävstång satt till {leverage}x för {symbol}")
-        except Exception as e:
-            logger.error(f"Kan inte bekräfta hävstång; order avbryts: {e}")
-            return False
-
-        # 2. Avrunda antal till börsens tillåtna precision och hantera minimum-gränser
-        market = exchange.market(symbol)
-        min_qty = float(market.get("limits", {}).get("amount", {}).get("min") or 0.0)
-        float_qty = float(qty)
-
-        if min_qty > 0 and float_qty < min_qty:
-            required_margin = (min_qty * plan["entry_price"]) / leverage
-            # Tillåt uppjustering till minimum endast om marginalen är säker (<40% av saldot)
-            if required_margin <= (plan.get("balance", 1000.0) * 0.45):
-                logger.info(f"Justerar volym från {float_qty:.4f} till börsens minimum {min_qty} för {symbol}")
-                float_qty = min_qty
-            else:
-                logger.warning(f"Beräknad volym {float_qty} under börsens minimum {min_qty}. Hoppar över för att skydda riskgränsen.")
-                return False
-
-        formatted_qty = exchange.amount_to_precision(symbol, float_qty)
-        formatted_tp = exchange.price_to_precision(symbol, tp)
-        formatted_sl = exchange.price_to_precision(symbol, sl)
-
-        # 3. Skicka order med fäst Stop-Loss och Take-Profit (Bybit / Binance perpetual)
-        params = {
-            "stopLoss": {
-                "triggerPrice": float(formatted_sl),
-                "type": "market",
-            },
-            "takeProfit": {
-                "triggerPrice": float(formatted_tp),
-                "type": "limit",
-            },
-        }
-
-        order = exchange.create_order(
-            symbol=symbol,
-            type="market",
-            side=entry_side,
-            amount=float(formatted_qty),
-            params=params,
-        )
-
-        logger.info(f"✅ Order exekverad framgångsrikt! Order ID: {order.get('id')}")
-
-        alert_msg = (
-            f"🎯 *ApexFlash Trade Öppnad: {action} {symbol}*\n"
-            f"• Entry: `{plan['entry_price']:.4f}`\n"
-            f"• Stop Loss: `{sl:.4f}` (-${plan['risk_usd']:.2f})\n"
-            f"• Take Profit (5:1): `{tp:.4f}` (+${plan['target_profit_usd']:.2f})\n"
-            f"• Hävstång: `{leverage}x`\n"
-            f"• Risk/Reward: `5:1`\n"
-            f"• Order ID: `{order.get('id')}`"
-        )
-        send_telegram_alert(alert_msg)
-        return True
-
-    except Exception as e:
-        logger.error(f"❌ Fel vid orderexekvering för {symbol}: {e}")
-        send_telegram_alert(f"⚠️ *Orderfel för {symbol}:* {e}")
-        return False
-
-
-# ==============================================================================
-# HUVUDLOOP & GITHUB STEP SUMMARY
-# ==============================================================================
-def run_bot():
-    logger.info("=" * 60)
-    logger.info("⚡ APEXFLASH TRADING BOT STARTAR ⚡")
-    logger.info(f"Tidpunkt: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
-    logger.info(
-        f"Börs: {EXCHANGE_ID.upper()} | Testnet: {USE_TESTNET} | "
-        f"Dry Run: {DRY_RUN} | Live trading enabled: {LIVE_TRADING_ENABLED}"
-    )
-    logger.info(f"Risk per trade: {RISK_PER_TRADE_PCT}% | Payout-ratio: {REWARD_RISK_RATIO}:1")
-    logger.info("=" * 60)
-
-    exchange = init_exchange()
-
-    # Hämta saldo: simulerat endast i dry run; live kräver verifierat saldo.
-    balance = 1000.0
-    if not DRY_RUN:
-        try:
-            bal_data = exchange.fetch_balance()
-            usdt_bal = float(bal_data.get("USDT", {}).get("free", 0.0) or 0.0)
-            if not math.isfinite(usdt_bal) or usdt_bal <= 0:
-                raise RuntimeError("Börsen returnerade inget positivt, giltigt USDT-saldo.")
-            balance = usdt_bal
-            logger.info(f"Hämtade aktuellt USDT-saldo: ${balance:.2f} USDT")
-        except Exception as e:
-            raise RuntimeError(f"Kan inte verifiera kontosaldo; avbryter säkert: {e}") from e
-    else:
-        logger.info(f"Dry Run simulerat saldo: ${balance:.2f} USDT")
-
-    summary_rows = []
-
-    # Iterera igenom samtliga övervakade par
-    for symbol in WATCHLIST:
-        logger.info(f"\n--- Analyserar {symbol} ---")
-
-        # Kontroll 1: Har vi redan en position i paret? (Anti-Martingale)
-        if has_open_position(exchange, symbol):
-            summary_rows.append({
-                "symbol": symbol,
-                "action": "SKIPPED",
-                "reason": "Redan öppen position (No averaging down)",
-                "price": "-",
-                "confidence": "-",
-            })
-            continue
-
-        # Hämta candles med robust fallback för Bybit format
-        candles = None
-        symbol_candidates = [
-            symbol,
-            symbol.replace(":USDT", ""),
-            symbol.replace("/", "").replace(":USDT", ""),
-        ]
-
-        for s_candidate in symbol_candidates:
-            try:
-                candles = exchange.fetch_ohlcv(s_candidate, timeframe=TIMEFRAME, limit=50)
-                if candles and len(candles) >= 30:
-                    break
-            except Exception:
-                continue
-
-        # Hämta live 15m ljus från data-api.binance.vision (globalt öppet, blockeras aldrig i molnet)
-        if not candles or len(candles) < 30:
-            try:
-                clean_sym = symbol.replace("/", "").replace(":USDT", "")
-                url = f"https://data-api.binance.vision/api/v3/klines?symbol={clean_sym}&interval=15m&limit=50"
-                resp = requests.get(url, timeout=5).json()
-                if isinstance(resp, list) and len(resp) >= 30:
-                    candles = [
-                        [
-                            int(item[0]),
-                            float(item[1]),
-                            float(item[2]),
-                            float(item[3]),
-                            float(item[4]),
-                            float(item[5]),
-                        ]
-                        for item in resp
-                    ]
-            except Exception as e:
-                logger.warning(f"Kunde inte hämta klines för {symbol}: {e}")
-
-        if not candles or len(candles) < 30:
-            logger.warning(f"Otillräcklig candle-data för {symbol}. Hoppar över.")
-            continue
-
-        # 1. Teknisk analys
-        tech = analyze_market_snapshot(candles)
-        logger.info(
-            f"Pris: {tech['current_price']} | RSI: {tech['rsi']} | ATR: {tech['atr']} | Mönster: {tech['pattern']}"
-        )
-
-        # 2. Gemini Flash AI-beslut
-        decision = get_ai_decision(symbol, tech, balance)
-        if not decision:
-            continue
-
-        action = decision.get("action", "HOLD")
+        elapsed = time.monotonic() - started
+        logger.info("Gemini-anrop KLART: %s efter %.1f s", symbol, elapsed)
+        text = getattr(response, "text", None)
+        if not text:
+            logger.error("Gemini gav tomt svar för %s; ingen signal.", symbol)
+            return None
+        decision = json.loads(text)
+        if not isinstance(decision, dict):
+            logger.error("Gemini-svar är inte ett JSON-objekt för %s; ingen signal.", symbol)
+            return None
+        action = str(decision.get("action", "HOLD")).upper()
+        if action not in {"LONG", "SHORT", "HOLD"}:
+            logger.error("Ogiltig action %r för %s; ingen signal.", action, symbol)
+            return None
         confidence = float(decision.get("confidence", 0.0))
-        reasoning = decision.get("reasoning", "")
+        if not math.isfinite(confidence) or not 0 <= confidence <= 1:
+            logger.error("Ogiltig confidence för %s; ingen signal.", symbol)
+            return None
+        decision["action"] = action
+        decision["confidence"] = confidence
+        return decision
+    except Exception:
+        logger.exception("Gemini-anrop FEL för %s efter %.1f s; ingen signal.",
+                         symbol, time.monotonic() - started)
+        return None
 
-        logger.info(f"AI-beslut: {action} (Konfidens: {confidence*100:.1f}%) | Motivering: {reasoning}")
+def write_summary(rows: List[Dict[str, Any]]) -> None:
+    if not GITHUB_STEP_SUMMARY:
+        return
+    try:
+        with open(GITHUB_STEP_SUMMARY, "a", encoding="utf-8") as f:
+            f.write("## ApexFlash — OKX EU diagnostic dry run\n\n")
+            f.write(f"- Timestamp UTC: `{datetime.now(timezone.utc).isoformat()}`\n")
+            f.write("- Mode: `PUBLIC DATA + GEMINI ANALYSIS ONLY; NO ORDERS`\n\n")
+            f.write("| Symbol | Action | Confidence | Price | Result |\n|---|---|---:|---:|---|\n")
+            for row in rows:
+                f.write("| {symbol} | {action} | {confidence} | {price} | {result} |\n".format(**row))
+    except Exception:
+        logger.exception("Kunde inte skriva GitHub Step Summary.")
 
-        if action in ("LONG", "SHORT") and confidence >= MIN_CONFIDENCE:
-            # 3. Strikt 5:1 R:R & Dynamisk positionsstorlek
-            entry_price = float(decision.get("entry_price") or tech["current_price"])
-            stop_loss = float(decision.get("stop_loss"))
-
-            plan = calculate_order_sizing(balance, entry_price, stop_loss, action)
-            if plan:
-                success = execute_trade(exchange, symbol, action, plan)
-                summary_rows.append({
-                    "symbol": symbol,
-                    "action": f"**{action}**" if success else f"{action} (Misslyckades)",
-                    "reason": reasoning,
-                    "price": f"${entry_price:.4f}",
-                    "confidence": f"{confidence*100:.1f}%",
-                    "sl": f"${plan['stop_loss']:.4f}",
-                    "tp": f"${plan['take_profit']:.4f}",
-                    "rr": "5:1",
-                })
-            else:
-                summary_rows.append({
-                    "symbol": symbol,
-                    "action": "AVBRÖTS",
-                    "reason": "SL eller riskparametrar utanför säkerhetsgräns",
-                    "price": f"${entry_price:.4f}",
-                    "confidence": f"{confidence*100:.1f}%",
-                })
-        else:
-            summary_rows.append({
-                "symbol": symbol,
-                "action": "HOLD",
-                "reason": reasoning or "Ingen tydlig högkonfidenssignal",
-                "price": f"${tech['current_price']:.4f}",
-                "confidence": f"{confidence*100:.1f}%",
-            })
-
-        # Undvik att träffa börsens rate limits
-        time.sleep(1)
-
-    # ==========================================================================
-    # GITHUB STEP SUMMARY RAPPORT
-    # ==========================================================================
-    if GITHUB_STEP_SUMMARY:
+def run_bot() -> int:
+    logger.info("=" * 60)
+    logger.info("APEXFLASH OKX EU — SAFE DIAGNOSTIC RUN")
+    logger.info("UTC: %s", datetime.now(timezone.utc).isoformat())
+    logger.info("Live trading: DISABLED IN THIS BUILD; no order methods called")
+    logger.info("Gemini timeout: %.1f s", GEMINI_TIMEOUT_MS / 1000)
+    exchange = init_exchange()
+    rows = []
+    for symbol in WATCHLIST:
+        logger.info("--- Analyserar %s ---", symbol)
         try:
-            with open(GITHUB_STEP_SUMMARY, "a") as f:
-                f.write("## ⚡ ApexFlash Trading Bot - Körningsrapport\n\n")
-                f.write(f"- **Tidpunkt (UTC):** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"- **Börs:** `{EXCHANGE_ID.upper()}` | **Läge:** `{'DRY RUN' if DRY_RUN else 'LIVE'}`\n")
-                f.write(f"- **Aktuellt Saldo:** `${balance:.2f} USDT` | **Risk/Trade:** `{RISK_PER_TRADE_PCT}%`\n")
-                f.write(f"- **Mål-Payout:** `5:1 R:R` | **AI-Modell:** `Google Gemini Flash`\n\n")
-
-                f.write("| Symbol | Åtgärd | Pris | Stop Loss | Take Profit (5:1) | Konfidens | Analys |\n")
-                f.write("|---|---|---|---|---|---|---|\n")
-                for r in summary_rows:
-                    sl_val = r.get("sl", "-")
-                    tp_val = r.get("tp", "-")
-                    f.write(
-                        f"| `{r['symbol']}` | {r['action']} | {r['price']} | {sl_val} | {tp_val} | {r['confidence']} | {r['reason']} |\n"
-                    )
-                f.write("\n> *Regler: Inga utfyllnadspositioner/martingale. Exakt 5:1 R:R. Dynamisk positionsstorlek.*")
-        except Exception as e:
-            logger.warning(f"Kunde inte skriva GitHub Step Summary: {e}")
-
-    logger.info("ApexFlash körning avslutad framgångsrikt.")
-
+            market = exchange.market(symbol)
+            if market.get("type") != "swap":
+                logger.warning("%s finns inte som swap i CCXT-marknaderna; hoppar över.", symbol)
+                rows.append({"symbol": symbol, "action": "SKIP", "confidence": "-", "price": "-", "result": "Not a swap market"})
+                continue
+            candles = exchange.fetch_ohlcv(symbol, timeframe=TIMEFRAME, limit=CANDLE_LIMIT)
+            if not candles or len(candles) < 50:
+                raise RuntimeError(f"För få candles: {len(candles) if candles else 0}")
+            tech = analyze(candles)
+            logger.info("Pris %.6f | RSI %.2f | ATR %.6f | Mönster %s",
+                        tech["current_price"], tech["rsi"], tech["atr"], tech["pattern"])
+            decision = get_ai_decision(symbol, tech)
+            if decision is None:
+                rows.append({"symbol": symbol, "action": "SKIP", "confidence": "-", "price": f"{tech['current_price']:.6f}", "result": "Gemini failed/no signal"})
+                continue
+            action = decision["action"]
+            confidence = decision["confidence"]
+            reasoning = str(decision.get("reasoning", ""))[:300]
+            logger.info("AI-beslut: %s | konfidens %.1f%% | %s",
+                        action, confidence * 100, reasoning)
+            result = "PAPER ONLY — no order submitted"
+            if action in {"LONG", "SHORT"} and confidence < MIN_CONFIDENCE:
+                result = "Below confidence threshold; no signal"
+                action = "HOLD"
+            rows.append({
+                "symbol": symbol,
+                "action": action,
+                "confidence": f"{confidence:.1%}",
+                "price": f"{tech['current_price']:.6f}",
+                "result": result,
+            })
+        except Exception as exc:
+            logger.exception("Fel vid analys av %s; går vidare säkert: %s", symbol, exc)
+            rows.append({"symbol": symbol, "action": "ERROR", "confidence": "-", "price": "-", "result": str(exc)[:160]})
+        time.sleep(0.5)
+    write_summary(rows)
+    logger.info("Körning klar. Analyserade %d symboler. Inga order har skickats.", len(rows))
+    return 0
 
 if __name__ == "__main__":
     try:
-        run_bot()
+        sys.exit(run_bot())
     except Exception:
-        logger.exception("ApexFlash avbröts på grund av ett kritiskt fel.")
+        logger.exception("ApexFlash avbröts på grund av kritiskt fel.")
         sys.exit(1)
