@@ -1,0 +1,60 @@
+name: ApexFlash Crypto Futures Bot
+
+on:
+  schedule:
+    # Körs automatiskt var 15:e minut dygnet runt
+    - cron: '*/15 * * * *'
+
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Kör i simulerat läge (Dry Run)'
+        required: true
+        type: boolean
+        default: false
+      risk_percent:
+        description: 'Risk per trade (% av saldo)'
+        required: false
+        type: string
+        default: '1.5'
+
+concurrency:
+  group: apexflash-bot
+  cancel-in-progress: false
+
+jobs:
+  run-trading-bot:
+    name: Execute Gemini Flash Trading Decision
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - name: 📥 Checka ut källkod
+        uses: actions/checkout@v4
+
+      - name: 🐍 Konfigurera Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 📦 Installera beroenden
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: ⚡ Kör ApexFlash Trading Bot
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          BYBIT_API_KEY: ${{ secrets.BYBIT_API_KEY }}
+          BYBIT_API_SECRET: ${{ secrets.BYBIT_API_SECRET }}
+          EXCHANGE_ID: 'bybit'
+          USE_TESTNET: 'false'
+          DRY_RUN: ${{ inputs.dry_run || secrets.DRY_RUN || 'false' }}
+          RISK_PER_TRADE_PCT: ${{ inputs.risk_percent || secrets.RISK_PER_TRADE_PCT || '1.5' }}
+          MIN_CONFIDENCE: '0.72'
+          MAX_LEVERAGE: '10'
+          MIN_LEVERAGE: '3'
+          TIMEFRAME: '15m'
+        run: |
+          python main.py
