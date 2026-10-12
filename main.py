@@ -58,8 +58,9 @@ USE_TESTNET = os.getenv("USE_TESTNET", "false").lower() in ("true", "1", "yes")
 DRY_RUN = os.getenv("DRY_RUN", "false").lower() in ("true", "1", "yes") or not API_KEY
 
 # Risk- och strategiparametrar
-RISK_PER_TRADE_PCT = float(os.getenv("RISK_PER_TRADE_PCT", "1.5"))  # 1.5% risk per trade
-REWARD_RISK_RATIO = 5.0                                             # Strikt 5:1 Payout Ratio
+# "The average win was about 4% of the balance, the average loss about 0.8%. Five to one."
+RISK_PER_TRADE_PCT = float(os.getenv("RISK_PER_TRADE_PCT", "0.8"))  # 0.8% genomsnittlig förlust per SL
+REWARD_RISK_RATIO = 5.0                                             # Strikt 5:1 Payout Ratio (0.8% risk -> 4.0% win)
 MIN_CONFIDENCE = float(os.getenv("MIN_CONFIDENCE", "0.72"))        # 72% AI-konfidens för entry
 MAX_LEVERAGE = int(os.getenv("MAX_LEVERAGE", "10"))                # Max 10x hävstång
 MIN_LEVERAGE = int(os.getenv("MIN_LEVERAGE", "3"))                 # Min 3x hävstång
@@ -258,16 +259,14 @@ def get_ai_decision(symbol: str, tech: Dict[str, Any], balance: float) -> Option
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
         prompt = f"""Du är en professionell kvantitativ kryptotradingbot för perpetual futures.
-Din uppgift är att besluta om en trade ska tas för {symbol} baserat på tekniska indikatorer.
-
-STRIKTA REGLER:
-1. Payout-ratio ska vara EXAKT 5:1 (Reward-to-Risk).
-   - Vid LONG (Bounce): Take Profit = Entry + (5.0 * (Entry - Stop Loss)).
-   - Vid SHORT (Dump): Take Profit = Entry - (5.0 * (Stop Loss - Entry)).
-2. Stop-Loss ska vara snabb och tight baserad på senaste support/resistans eller 1.2x-1.8x ATR.
-3. INGA utfyllnadspositioner eller martingale.
-4. Om marknaden är osäker, i chop eller saknar tydligt Dump/Bounce: välj "HOLD".
-5. Endast signaler med hög övertygelse (confidence >= {MIN_CONFIDENCE}) godkänns.
+HUVUDKONCEPT OCH PERSONLIGHET:
+- "A red hour and a green hour are both just setups."
+- Dump = Short, Bounce = Long. Ingen riktningsbias.
+- Varje entry har sin Take-Profit och Stop-Loss beräknad FÖRE den öppnas (ingen "let's see where it goes").
+- Payout-ratio ska vara EXAKT 5:1 (Reward-to-Risk). Snittförlust vid SL: 0.8% av saldot. Snittvinst vid TP: 4.0% av saldot.
+- Klipper förluster snabbt ("Cuts a loser fast and never averages down").
+- Inga utfyllnadspositioner eller martingale.
+- Endast signaler med hög övertygelse (confidence >= {MIN_CONFIDENCE}) godkänns. Om chop eller osäkerhet: välj "HOLD".
 
 MARKNADSDATA FÖR {symbol}:
 - Aktuellt pris: {tech['current_price']}
@@ -278,11 +277,11 @@ MARKNADSDATA FÖR {symbol}:
 - ATR (14): {tech['atr']}
 - Senaste Support: {tech['support']}
 - Senaste Resistans: {tech['resistance']}
-- Detekterat tekniskt mönster: {tech['pattern']}
+- Detekterat mönster: {tech['pattern']}
 - Volymökning: {tech['vol_surge']}
 - Tillgängligt kapital: {balance} USDT
 
-Svara EXKLUSIVT med ett JSON-objekt i detta exakta format:
+Svara EXKLUSIVT med ett JSON-objekt:
 {{
   "symbol": "{symbol}",
   "action": "LONG" eller "SHORT" eller "HOLD",
