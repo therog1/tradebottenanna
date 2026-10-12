@@ -22,3 +22,8 @@ The order request attaches stop-loss and take-profit algo instructions to the en
 - strategy requires at least 5:1 reward/risk
 
 This is experimental software, not a profit guarantee. The workflow is manual-dispatch only; it does not loop all night by itself. Test a single run and inspect exchange-side positions and attached stop/target orders before enabling any schedule.
+
+
+## Strict Gemini preflight gate
+
+Before any demo order is submitted, the bot fetches market data and obtains a valid Gemini JSON decision for every configured symbol. If any market-data request or Gemini call fails, returns empty/invalid JSON, or produces an invalid decision, the entire run aborts before the order phase. No partial trading run is allowed. Requests are paced using `GEMINI_CALL_INTERVAL_SECONDS` (default 12 seconds) to reduce rate-limit bursts. If an order-phase error occurs, the bot stops immediately; check OKX demo orders and positions before rerunning.

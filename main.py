@@ -199,7 +199,6 @@ def write_summary(rows):
 def main():
     log.info('='*58); log.info('APEXFLASH — OKX EU DEMO TRADING'); log.info('UTC %s',datetime.now(timezone.utc).isoformat())
     log.info('Demo order execution enabled=%s; endpoint=eea.okx.com; simulated header required',DEMO_TRADING_ENABLED)
-    # Private authenticated exchange is used only when explicitly enabled.
     ex=make_exchange(private=DEMO_TRADING_ENABLED)
     equity=PAPER_BALANCE_USDT
     if DEMO_TRADING_ENABLED:
@@ -207,18 +206,42 @@ def main():
         equity=float((balance.get('USDT') or {}).get('total') or 0)
         if equity<=0: raise RuntimeError('Inget positivt USDT-saldo hittades på demo-kontot; avbryter.')
         log.info('OKX EU DEMO USDT total=%s',equity)
-    rows=[]
-    for symbol in SYMBOLS:
+
+    # PHASE 1: collect valid market data and obtain a valid Gemini response for EVERY
+    # symbol before allowing any order. A single error aborts the entire run.
+    prepared=[]
+    log.info('FAS 1/2: Gemini måste svara giltigt på samtliga %d symboler innan order tillåts.',len(SYMBOLS))
+    for index, symbol in enumerate(SYMBOLS):
         try:
             m=ex.market(symbol)
-            if m.get('type')!='swap' or not m.get('active',True): raise RuntimeError('Inte ett aktivt swap-instrument')
-            candles=ex.fetch_ohlcv(symbol,timeframe=TIMEFRAME,limit=100); tech=analyze(candles); price=tech['current_price']
-            log.info('%s price=%.8f RSI=%.2f pattern=%s',symbol,price,tech['rsi'],tech['pattern'])
+            if m.get('type')!='swap' or not m.get('active',True):
+                raise RuntimeError(f'{symbol}: inte ett aktivt swap-instrument')
+            candles=ex.fetch_ohlcv(symbol,timeframe=TIMEFRAME,limit=100)
+            tech=analyze(candles)
+            log.info('%s price=%.8f RSI=%.2f pattern=%s',symbol,tech['current_price'],tech['rsi'],tech['pattern'])
             decision=ask_gemini(symbol,tech)
-            paper=validate_and_size(decision,price,equity)
-            action=paper['action']; status='NO TRADE'
+            # Validate the complete response now; malformed output also aborts all trading.
+            paper=validate_and_size(decision,tech['current_price'],equity)
+            prepared.append({'symbol':symbol,'tech':tech,'decision':decision,'paper':paper})
+            log.info('GEMINI PREFLIGHT OK %d/%d: %s action=%s confidence=%.1f%%',index+1,len(SYMBOLS),symbol,paper['action'],paper['confidence']*100)
+        except Exception as e:
+            log.exception('GEMINI/MARKNADS-PREFLIGHT MISSLYCKADES för %s. STOPPAR HELA KÖRNINGEN; INGA ORDER KOMMER ATT SKICKAS: %s',symbol,e)
+            raise RuntimeError(f'Preflight avbruten vid {symbol}; alla {len(SYMBOLS)} symboler måste ha giltig Gemini-analys. Inga order skickades.') from e
+        # Gemini free-tier is commonly rate-limited; pace requests instead of bursting.
+        if index < len(SYMBOLS)-1:
+            time.sleep(max(0.0,float(os.getenv('GEMINI_CALL_INTERVAL_SECONDS','12'))))
+
+    if len(prepared)!=len(SYMBOLS):
+        raise RuntimeError(f'Preflight ofullständig ({len(prepared)}/{len(SYMBOLS)}); inga order skickas.')
+    log.info('GEMINI PREFLIGHT GODKÄND: %d/%d svar giltiga. Först nu får orderfasen starta.',len(prepared),len(SYMBOLS))
+
+    # PHASE 2: only after all ten valid AI responses have been received.
+    rows=[]
+    for item in prepared:
+        symbol=item['symbol']; tech=item['tech']; decision=item['decision']; paper=item['paper']
+        action=paper['action']; status='NO TRADE'
+        try:
             if DEMO_TRADING_ENABLED and action in ('LONG','SHORT'):
-                # Avoid opening a second position in the same symbol and enforce a global cap.
                 current=ex.fetch_positions([symbol])
                 if any(abs(float(p.get('contracts') or 0))>0 for p in current):
                     status='SKIP: position already open'
@@ -231,12 +254,15 @@ def main():
                 status='SIGNAL ONLY; DEMO_TRADING_ENABLED=false'
             reason=str(decision.get('reasoning',''))[:180]
             log.info('%s decision=%s conf=%.1f%% result=%s %s',symbol,action,paper['confidence']*100,status,reason)
-            rows.append({'symbol':symbol,'action':action,'confidence':f"{paper['confidence']:.1%}",'price':f'{price:.8f}','rr':str(paper.get('risk_reward','—')),'status':status})
+            rows.append({'symbol':symbol,'action':action,'confidence':f"{paper['confidence']:.1%}",'price':f'{tech["current_price"]:.8f}','rr':str(paper.get('risk_reward','—')),'status':status})
         except Exception as e:
-            log.exception('Fel för %s; inga retry-order skickas: %s',symbol,e)
-            rows.append({'symbol':symbol,'action':'ERROR/HOLD','confidence':'—','price':'—','rr':'—','status':str(e)[:120]})
+            # Order-phase errors stop immediately; never proceed to later symbols after uncertainty.
+            log.exception('ORDERFEL för %s; stoppar orderfasen för att undvika fler order: %s',symbol,e)
+            rows.append({'symbol':symbol,'action':action,'confidence':f"{paper['confidence']:.1%}",'price':f'{tech["current_price"]:.8f}','rr':str(paper.get('risk_reward','—')),'status':'ORDER ERROR — STOPPED'})
+            write_summary(rows)
+            raise RuntimeError(f'Orderfas stoppad efter fel på {symbol}. Kontrollera OKX demo-positioner och order innan ny körning.') from e
         time.sleep(1.0)
-    write_summary(rows); log.info('Klart: %d symboler kontrollerade.',len(rows)); return 0
+    write_summary(rows); log.info('Klart: %d symboler; alla %d Gemini-svar godkändes före orderfasen.',len(rows),len(SYMBOLS)); return 0
 
 if __name__=='__main__':
     try: sys.exit(main())
