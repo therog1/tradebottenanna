@@ -596,14 +596,49 @@ def run_bot():
             })
             continue
 
-        # Hämta candles
-        try:
-            candles = exchange.fetch_ohlcv(symbol, timeframe=TIMEFRAME, limit=50)
-            if not candles or len(candles) < 30:
-                logger.warning(f"Otillräcklig candle-data för {symbol}")
+        # Hämta candles med robust fallback för Bybit format
+        candles = None
+        symbol_candidates = [
+            symbol,
+            symbol.replace(":USDT", ""),
+            symbol.replace("/", "").replace(":USDT", ""),
+        ]
+
+        for s_candidate in symbol_candidates:
+            try:
+                candles = exchange.fetch_ohlcv(s_candidate, timeframe=TIMEFRAME, limit=50)
+                if candles and len(candles) >= 30:
+                    break
+            except Exception:
                 continue
-        except Exception as e:
-            logger.error(f"Kunde inte hämta OHLCV för {symbol}: {e}")
+
+        # Direkt Bybit v5 REST API fallback om CCXT symbol-mapping krånglar
+        if not candles or len(candles) < 30:
+            try:
+                clean_sym = symbol.replace("/", "").replace(":USDT", "")
+                url = f"https://api.bybit.com/v5/market/kline?category=linear&symbol={clean_sym}&interval=15&limit=50"
+                resp = requests.get(url, timeout=5).json()
+                if resp.get("retCode") == 0 and resp.get("result", {}).get("list"):
+                    raw_list = resp["result"]["list"]
+                    # Bybit v5 kline format: [startTime, openPrice, highPrice, lowPrice, closePrice, volume, turnover]
+                    # Bybit returnerar nyaste först, vi vänder den så äldsta är först
+                    raw_list.reverse()
+                    candles = [
+                        [
+                            int(item[0]),
+                            float(item[1]),
+                            float(item[2]),
+                            float(item[3]),
+                            float(item[4]),
+                            float(item[5]),
+                        ]
+                        for item in raw_list
+                    ]
+            except Exception as e:
+                logger.error(f"Kunde inte hämta klines för {symbol}: {e}")
+
+        if not candles or len(candles) < 30:
+            logger.warning(f"Otillräcklig candle-data för {symbol}. Hoppar över.")
             continue
 
         # 1. Teknisk analys
