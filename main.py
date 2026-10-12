@@ -25,7 +25,19 @@ MIN_CONFIDENCE=float(os.getenv('MIN_CONFIDENCE','0.72'))
 RISK_PER_TRADE_PCT=float(os.getenv('RISK_PER_TRADE_PCT','0.8'))
 PAPER_BALANCE_USDT=float(os.getenv('PAPER_BALANCE_USDT','1000'))
 MAX_LEVERAGE=max(1,min(int(os.getenv('MAX_LEVERAGE','10')),10))
-SYMBOLS=['BTC/USDT:USDT','ETH/USDT:USDT','SOL/USDT:USDT','AVAX/USDT:USDT','SUI/USDT:USDT']
+# Ten-symbol watchlist. Each symbol is checked against OKX EU markets before use.
+SYMBOLS=[
+    'BTC/USDT:USDT',
+    'ETH/USDT:USDT',
+    'SOL/USDT:USDT',
+    'AVAX/USDT:USDT',
+    'SUI/USDT:USDT',
+    'XRP/USDT:USDT',
+    'DOGE/USDT:USDT',
+    'LINK/USDT:USDT',
+    'ADA/USDT:USDT',
+    'LTC/USDT:USDT',
+]
 SUMMARY_PATH=os.getenv('GITHUB_STEP_SUMMARY','')
 
 
@@ -127,8 +139,13 @@ def main():
     ex=make_exchange(); rows=[]
     for symbol in SYMBOLS:
         try:
-            m=ex.market(symbol)
-            if m.get('type')!='swap': raise RuntimeError('Instrumentet är inte ett swap-kontrakt')
+            try:
+                m=ex.market(symbol)
+            except Exception:
+                # Never guess an alternative contract or silently switch instrument.
+                raise RuntimeError('Symbolen finns inte i OKX EU-marknadslistan; hoppas över')
+            if m.get('type')!='swap' or not m.get('active', True):
+                raise RuntimeError('Instrumentet är inte ett aktivt swap-kontrakt')
             candles=ex.fetch_ohlcv(symbol,timeframe=TIMEFRAME,limit=100)
             tech=analyze(candles); price=tech['current_price']
             log.info('%s price=%.8f RSI=%.2f pattern=%s',symbol,price,tech['rsi'],tech['pattern'])
@@ -141,7 +158,8 @@ def main():
             log.exception('Säkert avbrott för %s: %s',symbol,e)
             rows.append({'symbol':symbol,'action':'ERROR/HOLD','confidence':'—','price':'—','rr':'—','status':str(e)[:120]})
         time.sleep(0.5)
-    write_summary(rows); log.info('Klart: %d symboler. Inga order har skickats.',len(rows)); return 0
+    write_summary(rows); available=sum(1 for r in rows if r['action']!='ERROR/HOLD')
+    log.info('Klart: %d symboler kontrollerade; %d fick analysresultat. Inga order har skickats.',len(rows),available); return 0
 
 if __name__=='__main__':
     try: sys.exit(main())
