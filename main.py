@@ -111,6 +111,12 @@ def init_exchange() -> ccxt.Exchange:
         "apiKey": API_KEY,
         "secret": API_SECRET,
         "enableRateLimit": True,
+        "urls": {
+            "api": {
+                "public": "https://api.bytick.com",
+                "private": "https://api.bytick.com",
+            }
+        },
         "options": {
             "defaultType": "swap",  # Perpetual futures
             "adjustForTimeDifference": True,
@@ -616,7 +622,7 @@ def run_bot():
         if not candles or len(candles) < 30:
             try:
                 clean_sym = symbol.replace("/", "").replace(":USDT", "")
-                url = f"https://api.bybit.com/v5/market/kline?category=linear&symbol={clean_sym}&interval=15&limit=50"
+                url = f"https://api.bytick.com/v5/market/kline?category=linear&symbol={clean_sym}&interval=15&limit=50"
                 resp = requests.get(url, timeout=5).json()
                 if resp.get("retCode") == 0 and resp.get("result", {}).get("list"):
                     raw_list = resp["result"]["list"]
