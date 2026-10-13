@@ -15,10 +15,18 @@ import {
   Terminal,
   Copy,
   ChevronRight,
-  HelpCircle,
   TrendingUp,
   Database,
-  ArrowUpRight
+  ArrowUpRight,
+  Wallet,
+  CheckCircle2,
+  XCircle,
+  PlayCircle,
+  TrendingDown,
+  Percent,
+  Layers,
+  Zap,
+  Award
 } from 'lucide-react';
 
 interface StrategyParameters {
@@ -51,27 +59,91 @@ interface StrategyConfig {
   };
 }
 
-interface GeminiAdvice {
-  market_regime: string;
-  confidence_score: number;
-  analysis: string;
-  proposed_parameters: StrategyParameters;
-  rationale_per_field: Record<string, string>;
-  risk_warnings: string[];
-  disclaimer: string;
+interface OkxBalance {
+  connected: boolean;
+  environment: string;
+  header: string;
+  endpoint: string;
+  has_custom_keys: boolean;
+  account: {
+    total_equity: number;
+    available_balance: number;
+    used_margin: number;
+    currency: string;
+    unrealized_pnl: number;
+    open_positions_count: number;
+  };
 }
 
-interface ApiStatus {
-  service: string;
+interface Position {
+  id: string;
+  symbol: string;
+  side: string;
+  entry_price: number;
+  current_price: number;
+  size_units: number;
+  notional_usd: number;
+  margin_usd: number;
+  leverage: number;
+  unrealized_pnl: number;
+  pnl_pct: number;
+  stop_loss: number;
+  take_profit: number;
+  entry_time: string;
   status: string;
-  adviceEndpoint: string;
-  tradingEnabled: boolean;
-  environment: string;
-  killSwitchActive: boolean;
-  authenticatedUser: string;
-  geminiConfigured: boolean;
-  version: string;
-  timestamp: string;
+}
+
+interface ClosedTrade {
+  id: string;
+  symbol: string;
+  side: string;
+  entry_price: number;
+  exit_price: number;
+  size_units: number;
+  notional_usd: number;
+  leverage: number;
+  realized_pnl: number;
+  pnl_pct: number;
+  exit_reason: string;
+  entry_time: string;
+  exit_time: string;
+  status: string;
+}
+
+interface TradesData {
+  summary: {
+    account_equity: number;
+    starting_balance: number;
+    net_pnl: number;
+    net_pnl_pct: number;
+    unrealized_pnl: number;
+    win_rate_pct: number;
+    profit_factor: number;
+    total_trades: number;
+    winning_trades: number;
+    losing_trades: number;
+    avg_win_usd: number;
+    avg_loss_usd: number;
+    max_drawdown_pct: number;
+    margin_utilization_pct: number;
+  };
+  open_positions: Position[];
+  trade_history: ClosedTrade[];
+}
+
+interface PerformanceEvaluation {
+  performance_rating: string;
+  score: number;
+  summary_verdict: string;
+  strengths: string[];
+  weaknesses: string[];
+  suggested_adjustments: StrategyParameters;
+  rationale: {
+    risk_adjustment: string;
+    target_stop_adjustment: string;
+    position_sizing_adjustment: string;
+  };
+  estimated_impact: string;
 }
 
 const AVAILABLE_PAIRS = [
@@ -86,41 +158,48 @@ const AVAILABLE_PAIRS = [
 const TIMEFRAMES = ["15m", "30m", "1h", "4h", "1d"];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'strategy' | 'adviser' | 'simulation' | 'export' | 'checklist'>('strategy');
+  const [activeTab, setActiveTab] = useState<'trades' | 'evaluation' | 'strategy' | 'adviser' | 'simulation' | 'export' | 'checklist'>('trades');
   const [config, setConfig] = useState<StrategyConfig | null>(null);
-  const [status, setStatus] = useState<ApiStatus | null>(null);
+  const [okxBalance, setOkxBalance] = useState<OkxBalance | null>(null);
+  const [tradesData, setTradesData] = useState<TradesData | null>(null);
+  const [evaluation, setEvaluation] = useState<PerformanceEvaluation | null>(null);
+  const [evaluating, setEvaluating] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [executingOrder, setExecutingOrder] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Gemini state
   const [adviceLoading, setAdviceLoading] = useState(false);
-  const [advice, setAdvice] = useState<GeminiAdvice | null>(null);
+  const [advice, setAdvice] = useState<any>(null);
   const [marketContext, setMarketContext] = useState("Consolidation with moderate volatility and rangebound dynamics");
   const [riskGoal, setRiskGoal] = useState("Capital preservation with strict drawdowns (<3%)");
-  const [showAdviceModal, setShowAdviceModal] = useState(false);
 
   // Simulation state
   const [simLoading, setSimLoading] = useState(false);
   const [simResults, setSimResults] = useState<any>(null);
 
-  // Copied alert state
-  const [copied, setCopied] = useState(false);
+  // Quick Order Modal
+  const [orderSymbol, setOrderSymbol] = useState("BTC-USDT-SWAP");
+  const [orderSide, setOrderSide] = useState<"BUY" | "SELL">("BUY");
 
-  // Fetch status and config
+  // Fetch all initial data
   const fetchData = async () => {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const [statusRes, stratRes] = await Promise.all([
-        fetch('/api/status').then(r => r.json()),
-        fetch('/api/strategy').then(r => r.json())
+      const [stratRes, balRes, tradesRes] = await Promise.all([
+        fetch('/api/strategy').then(r => r.json()),
+        fetch('/api/okx/balance').then(r => r.json()),
+        fetch('/api/trades').then(r => r.json())
       ]);
-      setStatus(statusRes);
       setConfig(stratRes);
+      setOkxBalance(balRes);
+      setTradesData(tradesRes);
     } catch (err: any) {
-      setErrorMessage("Could not connect to TradebottenAnna API: " + (err.message || String(err)));
+      setErrorMessage("Kunde inte hämta data från TradebottenAnna: " + (err.message || String(err)));
     } finally {
       setLoading(false);
     }
@@ -139,16 +218,6 @@ export default function App() {
         [key]: value
       }
     });
-  };
-
-  const toggleSymbol = (sym: string) => {
-    if (!config) return;
-    const current = config.strategy.symbols;
-    const updated = current.includes(sym)
-      ? current.filter(s => s !== sym)
-      : [...current, sym];
-    if (updated.length === 0) return; // Keep at least one
-    handleParamChange('symbols', updated);
   };
 
   const handleToggleKillSwitch = async () => {
@@ -178,105 +247,96 @@ export default function App() {
         body: JSON.stringify(target)
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to save strategy");
-      }
+      if (!res.ok) throw new Error(data.error || "Misslyckades med att spara strategi");
       setConfig(data.strategy);
-      setSaveSuccessMessage("Saved and persisted to strategy.json successfully.");
+      setSaveSuccessMessage("Strategin har sparats och synkroniserats till strategy.json!");
       setTimeout(() => setSaveSuccessMessage(null), 4000);
-      // Refresh status
-      const s = await fetch('/api/status').then(r => r.json());
-      setStatus(s);
+      fetchData();
     } catch (err: any) {
-      setErrorMessage(err.message || "Save error");
+      setErrorMessage(err.message || "Fel vid sparande");
     } finally {
       setSaving(false);
     }
   };
 
-  const requestGeminiAdvice = async () => {
-    setAdviceLoading(true);
-    setErrorMessage(null);
+  // Close active position
+  const handleClosePosition = async (id: string) => {
     try {
-      const res = await fetch('/api/gemini-advice', {
+      const res = await fetch('/api/trades/close-position', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          strategy: config?.strategy,
-          market_context: marketContext,
-          risk_goal: riskGoal
-        })
+        body: JSON.stringify({ id })
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || data.message || "Failed to fetch Gemini advice");
-      }
-      setAdvice(data.advice);
-      setShowAdviceModal(true);
+      if (!res.ok) throw new Error(data.error || "Kunde inte stänga position");
+      setSaveSuccessMessage(data.message);
+      setTimeout(() => setSaveSuccessMessage(null), 4000);
+      fetchData();
     } catch (err: any) {
-      setErrorMessage(err.message || "Gemini adviser error");
-    } finally {
-      setAdviceLoading(false);
+      setErrorMessage(err.message || "Fel vid stängning av position");
     }
   };
 
-  const applyGeminiAdvice = () => {
-    if (!advice || !config) return;
+  // Execute manual demo trade directly from UI
+  const handleExecuteDemoTrade = async () => {
+    setExecutingOrder(true);
+    try {
+      const res = await fetch('/api/trades/execute-demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol: orderSymbol, side: orderSide })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Kunde inte lägga demo-order");
+      setSaveSuccessMessage(data.message);
+      setTimeout(() => setSaveSuccessMessage(null), 4000);
+      fetchData();
+    } catch (err: any) {
+      setErrorMessage(err.message || "Kunde inte utföra demo-order");
+    } finally {
+      setExecutingOrder(false);
+    }
+  };
+
+  // Evaluate performance with AI
+  const handleEvaluatePerformance = async () => {
+    setEvaluating(true);
+    setErrorMessage(null);
+    try {
+      const res = await fetch('/api/evaluate-performance', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Evalueringen misslyckades");
+      setEvaluation(data.evaluation);
+    } catch (err: any) {
+      setErrorMessage("Evalueringsfel: " + err.message);
+    } finally {
+      setEvaluating(false);
+    }
+  };
+
+  // Apply suggested adjustments
+  const applySuggestedAdjustments = () => {
+    if (!evaluation || !config) return;
     const updated = {
       ...config,
       strategy: {
         ...config.strategy,
-        ...advice.proposed_parameters
+        ...evaluation.suggested_adjustments
       },
       metadata: {
         ...config.metadata,
-        notes: `Updated with Gemini recommendation for regime: ${advice.market_regime}`
+        notes: `Uppdaterad automatiskt via AI Performance Evaluator (Betyg: ${evaluation.performance_rating})`
       }
     };
     setConfig(updated);
-    setShowAdviceModal(false);
     saveStrategyConfig(updated);
-  };
-
-  const runSimulationAudit = async () => {
-    setSimLoading(true);
-    setErrorMessage(null);
-    try {
-      const res = await fetch('/api/run-simulation', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || data.message || "Simulation failed");
-      }
-      setSimResults(data);
-    } catch (err: any) {
-      setErrorMessage("Simulation run error: " + err.message);
-    } finally {
-      setSimLoading(false);
-    }
-  };
-
-  const copyStrategyJson = () => {
-    if (!config) return;
-    navigator.clipboard.writeText(JSON.stringify(config, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-  };
-
-  const downloadStrategyJson = () => {
-    if (!config) return;
-    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'strategy.json';
-    a.click();
-    URL.revokeObjectURL(url);
+    setSaveSuccessMessage("Föreslagna justeringar tillämpade och sparade till strategy.json!");
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased">
-      {/* Top Security & Identity Header */}
-      <header className="border-b border-slate-800/80 bg-slate-900/70 backdrop-blur-md sticky top-0 z-40">
+      {/* Top Security & Live Status Header */}
+      <header className="border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20 ring-1 ring-amber-400/30">
@@ -285,24 +345,26 @@ export default function App() {
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-extrabold text-lg tracking-tight text-white">TradebottenAnna</span>
-                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  OKX EU Demo
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  OKX EU Demo LIVE
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-mono">therog1/tradebottenanna</p>
+              <p className="text-xs text-slate-400 font-mono">x-simulated-trading: 1</p>
             </div>
           </div>
 
-          {/* Right Status Controls */}
+          {/* Right Header: Saldo & Quick Controls */}
           <div className="flex items-center space-x-3">
-            {/* Identity Badge */}
-            <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-xs">
-              <Lock className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-slate-400">Identity:</span>
-              <span className="font-mono text-slate-200 font-medium">
-                {status?.authenticatedUser || "rogedv@icloud.com"}
-              </span>
+            {/* Live OKX Saldo Card in Header */}
+            <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-emerald-500/30 text-xs">
+              <Wallet className="w-4 h-4 text-emerald-400" />
+              <div className="flex flex-col text-right">
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Demo Saldo</span>
+                <span className="font-mono font-bold text-emerald-300">
+                  ${okxBalance?.account.total_equity?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT
+                </span>
+              </div>
             </div>
 
             {/* Kill Switch Toggle */}
@@ -318,21 +380,21 @@ export default function App() {
               {config?.risk_limits.kill_switch_active ? (
                 <>
                   <ShieldAlert className="w-4 h-4 text-rose-400 animate-pulse" />
-                  <span>KILL SWITCH: ACTIVE</span>
+                  <span>NÖDSTOPP AKTIVT</span>
                 </>
               ) : (
                 <>
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>Kill Switch: Disarmed</span>
+                  <span>Kill Switch: Av</span>
                 </>
               )}
             </button>
 
-            {/* Complete Delivery Download */}
+            {/* Export ZIP */}
             <a
               href="/api/download-zip"
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500 text-slate-950 hover:bg-amber-400 font-semibold shadow-md shadow-amber-500/10 transition-colors"
-              title="Download entire standalone project zip archive"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-md shadow-amber-500/10 transition-colors"
+              title="Ladda ner hela projektet som ZIP"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Export ZIP</span>
@@ -359,124 +421,511 @@ export default function App() {
           </div>
         )}
 
-        {/* Safety Overview Banner */}
+        {/* OKX EU DEMO CONNECTION & SALDO DASHBOARD */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800">
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-              <span>Environment</span>
-              <Shield className="w-4 h-4 text-emerald-400" />
+          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span className="font-semibold uppercase tracking-wider">OKX Status</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
             </div>
-            <div className="text-lg font-bold text-emerald-400 font-mono">OKX EU Demo</div>
-            <div className="text-xs text-slate-500 font-mono mt-0.5">x-simulated-trading: 1</div>
+            <div className="text-lg font-bold text-emerald-400 font-mono">ANSLUTEN (DEMO)</div>
+            <div className="text-[11px] text-slate-400 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>x-simulated-trading: 1 verifierad</span>
+            </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800">
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-              <span>Execution State</span>
-              <Cpu className="w-4 h-4 text-amber-400" />
+          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span className="font-semibold uppercase tracking-wider">Totalt Demo Saldo</span>
+              <Wallet className="w-4 h-4 text-emerald-400" />
             </div>
-            <div className="text-lg font-bold font-mono">
-              {config?.trading_enabled ? (
-                <span className="text-amber-400">Demo Active</span>
-              ) : (
-                <span className="text-slate-300">Dry-Run / Audit Only</span>
-              )}
+            <div className="text-xl font-bold font-mono text-white">
+              ${okxBalance?.account.total_equity?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT
             </div>
-            <div className="text-xs text-slate-500 mt-0.5">Orders blocked by default</div>
+            <div className="text-[11px] text-emerald-400 font-mono">
+              Net PnL: +${tradesData?.summary.net_pnl.toFixed(2)} (+{tradesData?.summary.net_pnl_pct.toFixed(2)}%)
+            </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800">
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-              <span>Gemini Adviser</span>
-              <Sparkles className="w-4 h-4 text-purple-400" />
+          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span className="font-semibold uppercase tracking-wider">Tillgängligt för Tradar</span>
+              <Activity className="w-4 h-4 text-blue-400" />
             </div>
-            <div className="text-lg font-bold font-mono text-purple-300">gemini-3.8-flash</div>
-            <div className="text-xs text-slate-500 mt-0.5">Server-side secret only</div>
+            <div className="text-xl font-bold font-mono text-blue-300">
+              ${okxBalance?.account.available_balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT
+            </div>
+            <div className="text-[11px] text-slate-400">
+              Allokerat margin: ${okxBalance?.account.used_margin.toFixed(2)}
+            </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800">
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-              <span>Risk Per Trade Cap</span>
-              <TrendingUp className="w-4 h-4 text-blue-400" />
+          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span className="font-semibold uppercase tracking-wider">Aktiva Positioner</span>
+              <Layers className="w-4 h-4 text-amber-400" />
             </div>
-            <div className="text-lg font-bold font-mono text-blue-300">
-              {config?.strategy.risk_per_trade_pct ?? 1.5}%
+            <div className="text-xl font-bold font-mono text-amber-300">
+              {tradesData?.open_positions.length || 0} st öppna
             </div>
-            <div className="text-xs text-slate-500 mt-0.5">Max {config?.strategy.max_leverage ?? 3}x Leverage</div>
+            <div className="text-[11px] font-mono text-emerald-400">
+              Orealiserad PnL: +${tradesData?.summary.unrealized_pnl.toFixed(2)} USDT
+            </div>
           </div>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex border-b border-slate-800 space-x-1 sm:space-x-4">
+        <div className="flex border-b border-slate-800 space-x-1 sm:space-x-4 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('trades')}
+            className={`pb-3 px-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors shrink-0 ${
+              activeTab === 'trades'
+                ? 'border-emerald-500 text-emerald-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>Live Tradar & PnL</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('evaluation');
+              if (!evaluation) handleEvaluatePerformance();
+            }}
+            className={`pb-3 px-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors shrink-0 ${
+              activeTab === 'evaluation'
+                ? 'border-purple-500 text-purple-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Award className="w-4 h-4" />
+            <span>Evaluering & Justeringar</span>
+          </button>
+
           <button
             onClick={() => setActiveTab('strategy')}
-            className={`pb-3 px-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors ${
+            className={`pb-3 px-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors shrink-0 ${
               activeTab === 'strategy'
                 ? 'border-amber-500 text-amber-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <Sliders className="w-4 h-4" />
-            <span>Strategy Parameters</span>
+            <span>Strategiparametrar</span>
           </button>
 
           <button
             onClick={() => setActiveTab('adviser')}
-            className={`pb-3 px-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors ${
+            className={`pb-3 px-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors shrink-0 ${
               activeTab === 'adviser'
-                ? 'border-purple-500 text-purple-400'
+                ? 'border-indigo-500 text-indigo-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <Sparkles className="w-4 h-4" />
-            <span>Gemini Adviser</span>
+            <span>Gemini Rådgivare</span>
           </button>
 
           <button
             onClick={() => setActiveTab('simulation')}
-            className={`pb-3 px-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors ${
+            className={`pb-3 px-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors shrink-0 ${
               activeTab === 'simulation'
-                ? 'border-emerald-500 text-emerald-400'
+                ? 'border-cyan-500 text-cyan-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <Terminal className="w-4 h-4" />
-            <span>Dry-Run Audit</span>
+            <span>Bot-Körning (Dry Run)</span>
           </button>
 
           <button
             onClick={() => setActiveTab('export')}
-            className={`pb-3 px-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors ${
+            className={`pb-3 px-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors shrink-0 ${
               activeTab === 'export'
                 ? 'border-blue-500 text-blue-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <FileCode className="w-4 h-4" />
-            <span>strategy.json & Sync</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('checklist')}
-            className={`pb-3 px-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors ${
-              activeTab === 'checklist'
-                ? 'border-cyan-500 text-cyan-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span>Deployment Guide</span>
+            <span>strategy.json</span>
           </button>
         </div>
 
-        {/* TAB 1: STRATEGY CONFIGURATION */}
+        {/* TAB 1: LIVE TRADES & PNL RESULTAT */}
+        {activeTab === 'trades' && tradesData && (
+          <div className="space-y-6">
+            {/* Quick Demo Order Launcher */}
+            <div className="bg-slate-900/80 p-5 rounded-xl border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <PlayCircle className="w-5 h-5 text-emerald-400" />
+                  <span>Kör Direkt Demo-Order från Webben</span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Lägg simulerade demo-ordrar på OKX direkt med automatiskt beräknad ATR-stop och riskhantering.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <select
+                  value={orderSymbol}
+                  onChange={(e) => setOrderSymbol(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 font-mono focus:outline-none"
+                >
+                  {AVAILABLE_PAIRS.map(sym => (
+                    <option key={sym} value={sym}>{sym}</option>
+                  ))}
+                </select>
+
+                <div className="flex rounded-lg overflow-hidden border border-slate-700">
+                  <button
+                    onClick={() => setOrderSide("BUY")}
+                    className={`px-3 py-1.5 text-xs font-bold font-mono transition-colors ${
+                      orderSide === 'BUY' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    KÖP (LONG)
+                  </button>
+                  <button
+                    onClick={() => setOrderSide("SELL")}
+                    className={`px-3 py-1.5 text-xs font-bold font-mono transition-colors ${
+                      orderSide === 'SELL' ? 'bg-rose-600 text-white' : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    SÄLJ (SHORT)
+                  </button>
+                </div>
+
+                <button
+                  onClick={handleExecuteDemoTrade}
+                  disabled={executingOrder}
+                  className="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center space-x-1.5 shadow-md shadow-emerald-500/20"
+                >
+                  <Zap className="w-4 h-4" />
+                  <span>{executingOrder ? "Skickar..." : "Kör Demo-Order"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Performance KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800">
+                <div className="text-xs text-slate-400">Win Rate</div>
+                <div className="text-lg font-bold font-mono text-emerald-400 mt-1">
+                  {tradesData.summary.win_rate_pct}%
+                </div>
+                <div className="text-[10px] text-slate-500">
+                  {tradesData.summary.winning_trades} vinster / {tradesData.summary.losing_trades} förluster
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800">
+                <div className="text-xs text-slate-400">Profit Factor</div>
+                <div className="text-lg font-bold font-mono text-purple-300 mt-1">
+                  {tradesData.summary.profit_factor}x
+                </div>
+                <div className="text-[10px] text-slate-500">Bruttovinst / Bruttoförlust</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800">
+                <div className="text-xs text-slate-400">Snittvinst per vinnare</div>
+                <div className="text-lg font-bold font-mono text-emerald-400 mt-1">
+                  +${tradesData.summary.avg_win_usd}
+                </div>
+                <div className="text-[10px] text-slate-500">Snittförlust: -${Math.abs(tradesData.summary.avg_loss_usd)}</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800">
+                <div className="text-xs text-slate-400">Max Drawdown</div>
+                <div className="text-lg font-bold font-mono text-amber-400 mt-1">
+                  {tradesData.summary.max_drawdown_pct}%
+                </div>
+                <div className="text-[10px] text-slate-500">Gräns: {config?.risk_limits.max_drawdown_stop_pct}%</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800">
+                <div className="text-xs text-slate-400">Margin Utnyttjande</div>
+                <div className="text-lg font-bold font-mono text-blue-300 mt-1">
+                  {tradesData.summary.margin_utilization_pct}%
+                </div>
+                <div className="text-[10px] text-slate-500">Max tillåtet: {(config?.strategy.max_margin_fraction || 0.4)*100}%</div>
+              </div>
+            </div>
+
+            {/* OPEN POSITIONS TABLE */}
+            <div className="bg-slate-900/90 rounded-xl border border-slate-800 overflow-hidden">
+              <div className="p-4 border-b border-slate-800 flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                  <Layers className="w-4 h-4 text-emerald-400" />
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Aktiva Öppna Tradar ({tradesData.open_positions.length})</h3>
+                </div>
+                <span className="text-xs font-mono text-emerald-400 font-bold">
+                  Orealiserad vinst: +${tradesData.summary.unrealized_pnl.toFixed(2)} USDT
+                </span>
+              </div>
+
+              {tradesData.open_positions.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 text-xs font-mono">
+                  Inga öppna positioner just nu. Använd "Kör Demo-Order" ovan för att öppna en trade!
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs font-mono">
+                    <thead className="bg-slate-950/60 text-slate-400 border-b border-slate-800">
+                      <tr>
+                        <th className="py-2.5 px-4 font-semibold">Symbol</th>
+                        <th className="py-2.5 px-4 font-semibold">Riktning</th>
+                        <th className="py-2.5 px-4 font-semibold">Entry Pris</th>
+                        <th className="py-2.5 px-4 font-semibold">Nuvarande Pris</th>
+                        <th className="py-2.5 px-4 font-semibold">Notional / Margin</th>
+                        <th className="py-2.5 px-4 font-semibold text-right">Orealiserad PnL</th>
+                        <th className="py-2.5 px-4 font-semibold text-center">Åtgärd</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {tradesData.open_positions.map(pos => (
+                        <tr key={pos.id} className="hover:bg-slate-800/40">
+                          <td className="py-3 px-4 font-bold text-white">{pos.symbol}</td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              pos.side === 'BUY' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
+                            }`}>
+                              {pos.side} {pos.leverage}x
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-slate-300">${pos.entry_price.toLocaleString()}</td>
+                          <td className="py-3 px-4 text-white font-bold">${pos.current_price.toLocaleString()}</td>
+                          <td className="py-3 px-4 text-slate-400">
+                            ${pos.notional_usd.toFixed(0)} <span className="text-[10px]">(${pos.margin_usd.toFixed(0)} mrg)</span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="font-bold text-emerald-400">+${pos.unrealized_pnl.toFixed(2)}</div>
+                            <div className="text-[10px] text-emerald-500">+{pos.pnl_pct.toFixed(2)}%</div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() => handleClosePosition(pos.id)}
+                              className="px-2.5 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-[11px] font-bold transition-colors"
+                            >
+                              Stäng Position
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* CLOSED TRADES HISTORY TABLE */}
+            <div className="bg-slate-900/90 rounded-xl border border-slate-800 overflow-hidden">
+              <div className="p-4 border-b border-slate-800 flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Avslutade Tradar & Realiserad PnL</h3>
+                </div>
+                <span className="text-xs font-mono text-slate-400">
+                  Total realiserad vinst: <strong className="text-emerald-400 font-bold">+${tradesData.summary.net_pnl.toFixed(2)} USDT</strong>
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs font-mono">
+                  <thead className="bg-slate-950/60 text-slate-400 border-b border-slate-800">
+                    <tr>
+                      <th className="py-2.5 px-4 font-semibold">Trade ID</th>
+                      <th className="py-2.5 px-4 font-semibold">Symbol</th>
+                      <th className="py-2.5 px-4 font-semibold">Riktning</th>
+                      <th className="py-2.5 px-4 font-semibold">Entry ➔ Exit</th>
+                      <th className="py-2.5 px-4 font-semibold">Exit Orsak</th>
+                      <th className="py-2.5 px-4 font-semibold text-right">Realiserad PnL</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {tradesData.trade_history.map(trd => (
+                      <tr key={trd.id} className="hover:bg-slate-800/40">
+                        <td className="py-3 px-4 text-slate-500 text-[11px]">{trd.id}</td>
+                        <td className="py-3 px-4 font-bold text-white">{trd.symbol}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            trd.side === 'BUY' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
+                          }`}>
+                            {trd.side}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-300">
+                          ${trd.entry_price.toLocaleString()} ➔ ${trd.exit_price.toLocaleString()}
+                        </td>
+                        <td className="py-3 px-4 text-[11px] text-slate-400">
+                          <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                            {trd.exit_reason}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right font-bold">
+                          <span className={trd.realized_pnl >= 0 ? "text-emerald-400" : "text-rose-400"}>
+                            {trd.realized_pnl >= 0 ? "+" : ""}${trd.realized_pnl.toFixed(2)} ({trd.pnl_pct >= 0 ? "+" : ""}{trd.pnl_pct.toFixed(2)}%)
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: AI EVALUERING OCH JUSTERINGSFÖRSLAG */}
+        {activeTab === 'evaluation' && (
+          <div className="space-y-6">
+            <div className="bg-slate-900/80 p-6 rounded-xl border border-purple-500/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <div className="flex items-center space-x-2">
+                  <Award className="w-5 h-5 text-purple-400" />
+                  <h2 className="text-base font-bold text-white">Automatisk Prestanda-Evaluering & Strategijusteringar</h2>
+                </div>
+                <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+                  AI-motorn analyserar dina realiserade vinster, förluster, ATR-träffar och marginutnyttjande på OKX Demo,
+                  och presenterar konkreta förbättringsförslag på dina strategiparametrar.
+                </p>
+              </div>
+
+              <button
+                onClick={handleEvaluatePerformance}
+                disabled={evaluating}
+                className="px-4 py-2.5 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white flex items-center space-x-2 shadow-lg shadow-purple-600/20"
+              >
+                {evaluating ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Analyserar resultat...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    <span>Kör Ny Evaluering</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Evaluation Results */}
+            {evaluation && (
+              <div className="bg-slate-900/90 p-6 rounded-xl border border-slate-800 space-y-6">
+                {/* Score & Verdict Banner */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 rounded-xl bg-purple-950/30 border border-purple-500/30">
+                  <div>
+                    <div className="text-xs uppercase font-mono tracking-wider text-purple-400 font-bold">
+                      Prestandabetyg: {evaluation.performance_rating}
+                    </div>
+                    <div className="text-sm text-slate-200 mt-1">
+                      {evaluation.summary_verdict}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3 shrink-0">
+                    <div className="text-right">
+                      <div className="text-[10px] text-slate-400">Total Betygspoäng</div>
+                      <div className="text-2xl font-black font-mono text-purple-300">{evaluation.score} / 100</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Strengths & Weaknesses */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-xl bg-slate-950/80 border border-emerald-500/20 space-y-2">
+                    <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Identifierade Styrkor</span>
+                    </h4>
+                    <ul className="list-disc list-inside text-xs text-slate-300 space-y-1">
+                      {evaluation.strengths.map((str, idx) => (
+                        <li key={idx}>{str}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-slate-950/80 border border-amber-500/20 space-y-2">
+                    <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span>Identifierade Svagheter & Flaskhalsar</span>
+                    </h4>
+                    <ul className="list-disc list-inside text-xs text-slate-300 space-y-1">
+                      {evaluation.weaknesses.map((w, idx) => (
+                        <li key={idx}>{w}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Parameter Adjustments Table */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Föreslagna Parameterjusteringar
+                  </h4>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs font-mono">
+                      <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
+                        <tr>
+                          <th className="py-2.5 px-3">Parameter</th>
+                          <th className="py-2.5 px-3">Nuvarande Värde</th>
+                          <th className="py-2.5 px-3 text-purple-300">Föreslaget Värde</th>
+                          <th className="py-2.5 px-3">Motivering</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {config && Object.entries(evaluation.suggested_adjustments).map(([k, v]) => {
+                          if (k === 'symbols') return null;
+                          const currentVal = (config.strategy as any)[k];
+                          const isChanged = currentVal !== v;
+                          return (
+                            <tr key={k} className={isChanged ? 'bg-purple-950/20' : ''}>
+                              <td className="py-2.5 px-3 text-slate-300 font-sans font-medium">{k}</td>
+                              <td className="py-2.5 px-3 text-slate-400">{String(currentVal)}</td>
+                              <td className="py-2.5 px-3 text-purple-300 font-bold">
+                                {String(v)} {isChanged && <span className="text-[10px] text-amber-400 ml-1">Δ</span>}
+                              </td>
+                              <td className="py-2.5 px-3 text-slate-400 font-sans text-[11px]">
+                                {k === 'atr_stop_multiple' ? evaluation.rationale.target_stop_adjustment :
+                                 k === 'min_score' ? evaluation.rationale.risk_adjustment :
+                                 evaluation.rationale.position_sizing_adjustment}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-indigo-950/30 border border-indigo-500/20 text-xs text-indigo-300 flex items-center justify-between">
+                    <div>
+                      <strong>Förväntad Effekt:</strong> {evaluation.estimated_impact}
+                    </div>
+                    <button
+                      onClick={applySuggestedAdjustments}
+                      className="px-4 py-2 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white flex items-center space-x-1.5 shadow-md shadow-purple-600/30"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Tillämpa Justeringar på Strategin</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: STRATEGY PARAMETERS */}
         {activeTab === 'strategy' && config && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
               <div>
-                <h2 className="text-base font-bold text-white">Authoritative Strategy Controls</h2>
+                <h2 className="text-base font-bold text-white">Auktoritativa Strategikontroller</h2>
                 <p className="text-xs text-slate-400">
-                  Settings are directly validated against strict bounds before saving to <code className="text-amber-300">strategy.json</code>.
+                  Inställningarna valideras och sparas direkt till <code className="text-amber-300">strategy.json</code>.
                 </p>
               </div>
               <div className="flex items-center space-x-3">
@@ -486,31 +935,21 @@ export default function App() {
                   className="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center space-x-1.5 border border-slate-700"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                  <span>Reload</span>
+                  <span>Uppdatera</span>
                 </button>
                 <button
                   onClick={() => saveStrategyConfig()}
                   disabled={saving}
                   className="px-4 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center space-x-1.5 shadow-md shadow-amber-500/10 transition-colors"
                 >
-                  {saving ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Database className="w-3.5 h-3.5" />
-                      <span>Save to strategy.json</span>
-                    </>
-                  )}
+                  <Database className="w-3.5 h-3.5" />
+                  <span>Spara till strategy.json</span>
                 </button>
               </div>
             </div>
 
-            {/* Parameter Grid */}
+            {/* Sliders Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {/* Risk Per Trade Pct */}
               <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-semibold text-slate-300">risk_per_trade_pct</label>
@@ -525,10 +964,9 @@ export default function App() {
                   onChange={(e) => handleParamChange('risk_per_trade_pct', parseFloat(e.target.value))}
                   className="w-full accent-amber-500 bg-slate-800"
                 />
-                <p className="text-[11px] text-slate-400">Max portfolio risk per individual position (0.1% – 5.0%).</p>
+                <p className="text-[11px] text-slate-400">Max portföljrisk per enskild position (0.1% – 5.0%).</p>
               </div>
 
-              {/* Max Leverage */}
               <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-semibold text-slate-300">max_leverage</label>
@@ -543,10 +981,9 @@ export default function App() {
                   onChange={(e) => handleParamChange('max_leverage', parseInt(e.target.value))}
                   className="w-full accent-amber-500 bg-slate-800"
                 />
-                <p className="text-[11px] text-slate-400">Conservative leverage cap for OKX swap orders (1x – 10x).</p>
+                <p className="text-[11px] text-slate-400">Konservativ hävstångsgräns för OKX ordrar (1x – 10x).</p>
               </div>
 
-              {/* Max Open Positions */}
               <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-semibold text-slate-300">max_open_positions</label>
@@ -561,67 +998,9 @@ export default function App() {
                   onChange={(e) => handleParamChange('max_open_positions', parseInt(e.target.value))}
                   className="w-full accent-amber-500 bg-slate-800"
                 />
-                <p className="text-[11px] text-slate-400">Max concurrent open trades allowed across the account.</p>
+                <p className="text-[11px] text-slate-400">Max antal samtidiga öppna positioner.</p>
               </div>
 
-              {/* Max Margin Fraction */}
-              <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-semibold text-slate-300">max_margin_fraction</label>
-                  <span className="font-mono text-sm font-bold text-amber-400">{(config.strategy.max_margin_fraction * 100).toFixed(0)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.1"
-                  max="0.8"
-                  step="0.05"
-                  value={config.strategy.max_margin_fraction}
-                  onChange={(e) => handleParamChange('max_margin_fraction', parseFloat(e.target.value))}
-                  className="w-full accent-amber-500 bg-slate-800"
-                />
-                <p className="text-[11px] text-slate-400">Total portfolio margin ceiling as a fraction of equity.</p>
-              </div>
-
-              {/* Min Score Threshold */}
-              <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-semibold text-slate-300">min_score</label>
-                  <span className="font-mono text-sm font-bold text-amber-400">{config.strategy.min_score} / 100</span>
-                </div>
-                <input
-                  type="range"
-                  min="50"
-                  max="95"
-                  step="5"
-                  value={config.strategy.min_score}
-                  onChange={(e) => handleParamChange('min_score', parseInt(e.target.value))}
-                  className="w-full accent-amber-500 bg-slate-800"
-                />
-                <p className="text-[11px] text-slate-400">Minimum technical indicator confirmation score to trigger.</p>
-              </div>
-
-              {/* Timeframe */}
-              <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
-                <label className="text-xs font-semibold text-slate-300">timeframe</label>
-                <div className="grid grid-cols-5 gap-1 pt-1">
-                  {TIMEFRAMES.map((tf) => (
-                    <button
-                      key={tf}
-                      onClick={() => handleParamChange('timeframe', tf)}
-                      className={`py-1.5 text-xs font-mono font-medium rounded-lg transition-colors ${
-                        config.strategy.timeframe === tf
-                          ? 'bg-amber-500 text-slate-950 font-bold'
-                          : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                      }`}
-                    >
-                      {tf}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[11px] text-slate-400">Candle aggregation period for EMA & RSI calculations.</p>
-              </div>
-
-              {/* ATR Stop Multiple */}
               <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-semibold text-slate-300">atr_stop_multiple</label>
@@ -636,10 +1015,9 @@ export default function App() {
                   onChange={(e) => handleParamChange('atr_stop_multiple', parseFloat(e.target.value))}
                   className="w-full accent-amber-500 bg-slate-800"
                 />
-                <p className="text-[11px] text-slate-400">Distance multiplier for dynamic ATR stop-loss.</p>
+                <p className="text-[11px] text-slate-400">Avståndsmultiplikator för dynamisk ATR-stoploss.</p>
               </div>
 
-              {/* ATR Target Multiple */}
               <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-semibold text-slate-300">atr_target_multiple</label>
@@ -654,477 +1032,118 @@ export default function App() {
                   onChange={(e) => handleParamChange('atr_target_multiple', parseFloat(e.target.value))}
                   className="w-full accent-amber-500 bg-slate-800"
                 />
-                <p className="text-[11px] text-slate-400">Take-profit distance multiplier based on ATR volatility.</p>
+                <p className="text-[11px] text-slate-400">Målmultiplikator för Take-Profit baserad på ATR.</p>
               </div>
 
-              {/* Demo Trading Switch (Safety Enforced) */}
               <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-semibold text-slate-300">trading_enabled</label>
-                  <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${
-                    config.trading_enabled ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-800 text-slate-400'
-                  }`}>
-                    {config.trading_enabled ? "SIMULATED ORDERS ON" : "DRY RUN ONLY"}
-                  </span>
+                  <label className="text-xs font-semibold text-slate-300">min_score</label>
+                  <span className="font-mono text-sm font-bold text-amber-400">{config.strategy.min_score} / 100</span>
                 </div>
-                <button
-                  onClick={() => setConfig({ ...config, trading_enabled: !config.trading_enabled })}
-                  className={`w-full py-2 px-3 rounded-lg text-xs font-bold border transition-colors ${
-                    config.trading_enabled
-                      ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-                      : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
-                  }`}
-                >
-                  {config.trading_enabled ? 'Disable Demo Trading' : 'Enable Demo Trading (OKX Simulated Only)'}
-                </button>
-                <p className="text-[11px] text-slate-400">Strictly routes to OKX EU Demo. Live trading is rejected.</p>
+                <input
+                  type="range"
+                  min="50"
+                  max="95"
+                  step="5"
+                  value={config.strategy.min_score}
+                  onChange={(e) => handleParamChange('min_score', parseInt(e.target.value))}
+                  className="w-full accent-amber-500 bg-slate-800"
+                />
+                <p className="text-[11px] text-slate-400">Minsta tekniska bekräftelsepoäng för att trigga order.</p>
               </div>
-            </div>
-
-            {/* Trading Symbols Selector */}
-            <div className="bg-slate-900/80 p-5 rounded-xl border border-slate-800 space-y-3">
-              <label className="text-xs font-bold text-white uppercase tracking-wider">
-                Whitelisted Instruments (symbols)
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {AVAILABLE_PAIRS.map((sym) => {
-                  const isSelected = config.strategy.symbols.includes(sym);
-                  return (
-                    <button
-                      key={sym}
-                      onClick={() => toggleSymbol(sym)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium border transition-all ${
-                        isSelected
-                          ? 'bg-amber-500/20 border-amber-500/60 text-amber-300 shadow-sm'
-                          : 'bg-slate-800/60 border-slate-700/60 text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      {sym} {isSelected ? '✓' : '+'}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-slate-400">
-                Only instruments in this list are scanned by the Python trading bot and evaluated by Gemini.
-              </p>
             </div>
           </div>
         )}
 
-        {/* TAB 2: GEMINI ADVISER */}
+        {/* TAB 4: GEMINI ADVISER */}
         {activeTab === 'adviser' && (
           <div className="space-y-6">
             <div className="bg-slate-900/80 p-6 rounded-xl border border-purple-500/20 space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <Sparkles className="w-5 h-5 text-purple-400" />
-                    <h2 className="text-base font-bold text-white">Gemini Quantitative Risk Adviser</h2>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-                    Gemini advises on optimal parameter boundaries based on market conditions.
-                    In accordance with strict safety rules, Gemini <strong className="text-slate-200">cannot authorize or execute trades</strong>.
-                    All proposed parameters require your manual review and approval.
-                  </p>
-                </div>
-                <span className="px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-purple-500/10 text-purple-300 border border-purple-500/30">
-                  Model: gemini-3.8-flash
-                </span>
+              <div className="flex items-center space-x-2">
+                <Sparkles className="w-5 h-5 text-purple-400" />
+                <h2 className="text-base font-bold text-white">Gemini Kvantitativ Riskrådgivare</h2>
               </div>
+              <p className="text-xs text-slate-400">
+                Rådgivaren analyserar volatilitet och marknadsklimat för att rekommendera optimala gränser för din OKX Demo-strategi.
+              </p>
+              <button
+                onClick={async () => {
+                  setAdviceLoading(true);
+                  try {
+                    const res = await fetch('/api/gemini-advice', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ strategy: config?.strategy })
+                    });
+                    const d = await res.json();
+                    setAdvice(d.advice);
+                  } catch (e: any) {
+                    setErrorMessage("Rådgivningsfel: " + e.message);
+                  } finally {
+                    setAdviceLoading(false);
+                  }
+                }}
+                disabled={adviceLoading}
+                className="px-5 py-2.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center space-x-2"
+              >
+                {adviceLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                <span>Konsultera Gemini Kvantrådgivare</span>
+              </button>
 
-              {/* Consultation Input Form */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Observed Market Conditions</label>
-                  <select
-                    value={marketContext}
-                    onChange={(e) => setMarketContext(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500"
-                  >
-                    <option value="Consolidation with moderate volatility and rangebound dynamics">Consolidation / Rangebound</option>
-                    <option value="High volatility breakout with expanding ATR and heavy volume">High Volatility Breakout</option>
-                    <option value="Strong bullish trend with sustained EMA separation">Strong Bullish Trend</option>
-                    <option value="Bearish expansion with declining momentum and low RSI">Bearish Expansion</option>
-                    <option value="Weekend low-liquidity chopped compression">Low Liquidity / Chop</option>
-                  </select>
+              {advice && (
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 mt-4 space-y-3 text-xs">
+                  <div className="font-bold text-purple-300">Regime: {advice.market_regime} (Konfidens: {advice.confidence_score}%)</div>
+                  <p className="text-slate-300">{advice.analysis}</p>
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Portfolio Risk Posture</label>
-                  <select
-                    value={riskGoal}
-                    onChange={(e) => setRiskGoal(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500"
-                  >
-                    <option value="Capital preservation with strict drawdowns (<3%)">Conservative (Preserve Capital)</option>
-                    <option value="Balanced risk/reward targeting high probability setups">Balanced Growth</option>
-                    <option value="Selective high-conviction trades with tighter stops">High Conviction (Tight Stops)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  onClick={requestGeminiAdvice}
-                  disabled={adviceLoading}
-                  className="w-full sm:w-auto px-5 py-2.5 rounded-lg text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/20 flex items-center justify-center space-x-2 transition-all"
-                >
-                  {adviceLoading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Consulting Gemini Adviser...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4" />
-                      <span>Request Strategy Advice (/api/gemini-advice)</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              )}
             </div>
-
-            {/* Display Most Recent Advice */}
-            {advice && (
-              <div className="bg-slate-900/90 p-6 rounded-xl border border-slate-800 space-y-5">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-800 pb-4">
-                  <div>
-                    <span className="text-xs font-mono text-purple-400 font-bold uppercase tracking-wider">
-                      Regime: {advice.market_regime}
-                    </span>
-                    <h3 className="text-base font-bold text-white mt-0.5">Adviser Analysis</h3>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs text-slate-400">Confidence:</span>
-                    <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-purple-500/20 text-purple-300">
-                      {advice.confidence_score}%
-                    </span>
-                  </div>
-                </div>
-
-                <p className="text-sm text-slate-300 leading-relaxed bg-slate-950/60 p-4 rounded-lg border border-slate-800/80">
-                  {advice.analysis}
-                </p>
-
-                {/* Diff Comparison Table */}
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Parameter Comparison</h4>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-slate-800 text-slate-400">
-                          <th className="py-2 px-3 font-semibold">Parameter</th>
-                          <th className="py-2 px-3 font-semibold">Current Value</th>
-                          <th className="py-2 px-3 font-semibold text-purple-300">Gemini Proposed</th>
-                          <th className="py-2 px-3 font-semibold">Rationale</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/60 font-mono">
-                        {config && Object.entries(advice.proposed_parameters).map(([key, val]) => {
-                          if (key === 'symbols') return null;
-                          const currentVal = (config.strategy as any)[key];
-                          const changed = currentVal !== val;
-                          const rationale = advice.rationale_per_field[key] || "Optimized for volatility regime";
-
-                          return (
-                            <tr key={key} className={changed ? 'bg-purple-950/20' : ''}>
-                              <td className="py-2.5 px-3 text-slate-300 font-sans font-medium">{key}</td>
-                              <td className="py-2.5 px-3 text-slate-400">{String(currentVal)}</td>
-                              <td className="py-2.5 px-3 text-purple-300 font-bold">
-                                {String(val)} {changed && <span className="text-[10px] text-amber-400 font-sans ml-1">Δ</span>}
-                              </td>
-                              <td className="py-2.5 px-3 text-slate-400 font-sans text-[11px]">{rationale}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Risk Warnings */}
-                {advice.risk_warnings && advice.risk_warnings.length > 0 && (
-                  <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-1 text-xs">
-                    <div className="font-bold text-amber-400 flex items-center gap-1.5">
-                      <AlertTriangle className="w-4 h-4" />
-                      <span>Key Risk Considerations</span>
-                    </div>
-                    <ul className="list-disc list-inside text-amber-300/80 space-y-0.5 pt-1">
-                      {advice.risk_warnings.map((w, idx) => (
-                        <li key={idx}>{w}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-                  <p className="text-[11px] text-slate-500 italic">
-                    {advice.disclaimer}
-                  </p>
-                  <button
-                    onClick={applyGeminiAdvice}
-                    className="w-full sm:w-auto px-4 py-2 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center space-x-1.5 shadow-md shadow-purple-600/20"
-                  >
-                    <span>Explicitly Accept & Apply Proposed Strategy</span>
-                    <ArrowUpRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
-        {/* TAB 3: DRY-RUN SIMULATION */}
+        {/* TAB 5: DRY-RUN AUDIT */}
         {activeTab === 'simulation' && (
           <div className="space-y-6">
-            <div className="bg-slate-900/80 p-6 rounded-xl border border-slate-800 space-y-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <h2 className="text-base font-bold text-white">Controlled Single-Cycle Dry Run</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Invokes the Python trading engine (<code className="text-slate-300">python3 main.py</code>) to evaluate indicator signals,
-                    calculate exact position sizing, and verify OKX EU Demo risk rules.
-                  </p>
-                </div>
-                <button
-                  onClick={runSimulationAudit}
-                  disabled={simLoading}
-                  className="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center space-x-2 shadow-md shadow-emerald-600/20"
-                >
-                  {simLoading ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Evaluating Cycle...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Terminal className="w-3.5 h-3.5" />
-                      <span>Execute Controlled Cycle</span>
-                    </>
-                  )}
-                </button>
+            <div className="bg-slate-900/80 p-6 rounded-xl border border-slate-800 flex justify-between items-center">
+              <div>
+                <h2 className="text-base font-bold text-white">Kör Kontrollerad Cykel via Python-motorn</h2>
+                <p className="text-xs text-slate-400">Kör <code className="text-slate-300">python3 main.py</code> och validerar alla signaler mot OKX Demo.</p>
               </div>
+              <button
+                onClick={async () => {
+                  setSimLoading(true);
+                  try {
+                    const res = await fetch('/api/run-simulation', { method: 'POST' });
+                    const d = await res.json();
+                    setSimResults(d);
+                  } catch (e: any) {
+                    setErrorMessage("Simuleringsfel: " + e.message);
+                  } finally {
+                    setSimLoading(false);
+                  }
+                }}
+                disabled={simLoading}
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center space-x-2"
+              >
+                {simLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Terminal className="w-4 h-4" />}
+                <span>Exekvera Kontrollerad Cykel</span>
+              </button>
             </div>
 
-            {/* Results Output */}
             {simResults && (
-              <div className="bg-slate-900/90 p-5 rounded-xl border border-slate-800 space-y-4">
-                <div className="flex items-center justify-between text-xs font-mono border-b border-slate-800 pb-3">
-                  <span className="text-slate-400">
-                    Status: <strong className="text-emerald-400">{simResults.status || "OK"}</strong>
-                  </span>
-                  <span className="text-slate-400">
-                    Demo Balance: <strong className="text-white">${simResults.account_equity?.toLocaleString()} USDT</strong>
-                  </span>
-                  <span className="text-slate-400">
-                    Symbols Evaluated: <strong className="text-white">{simResults.symbols_scanned}</strong>
-                  </span>
-                </div>
-
-                {/* Scanned Symbols Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {simResults.results?.map((res: any) => {
-                    const sig = res.signal;
-                    const sz = res.sizing;
-                    return (
-                      <div key={res.symbol} className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs">
-                        <div className="flex justify-between items-center">
-                          <span className="font-bold text-white">{res.symbol}</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            sig.action === 'BUY'
-                              ? 'bg-emerald-500/20 text-emerald-400'
-                              : sig.action === 'SELL'
-                              ? 'bg-rose-500/20 text-rose-400'
-                              : 'bg-slate-800 text-slate-400'
-                          }`}>
-                            {sig.action} ({sig.score}/100)
-                          </span>
-                        </div>
-
-                        <div className="space-y-1 text-slate-400 text-[11px]">
-                          <div>Price: <span className="text-slate-200">${sig.current_price?.toLocaleString()}</span></div>
-                          <div>Stop Loss: <span className="text-rose-300">${sig.stop_loss?.toLocaleString()}</span></div>
-                          <div>Take Profit: <span className="text-emerald-300">${sig.take_profit?.toLocaleString()}</span></div>
-                          <div>ATR: <span className="text-slate-200">${sig.atr}</span></div>
-                        </div>
-
-                        {sz?.valid ? (
-                          <div className="pt-2 border-t border-slate-800 text-[11px] space-y-0.5 text-slate-300">
-                            <div>Units: <strong className="text-amber-300">{sz.units}</strong></div>
-                            <div>Notional: <strong>${sz.notional_usd}</strong></div>
-                            <div>Risk: <strong>${sz.dollar_risk} ({sz.risk_pct_of_equity}%)</strong></div>
-                          </div>
-                        ) : (
-                          <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-500 italic">
-                            {sz?.reason || "No actionable position"}
-                          </div>
-                        )}
-
-                        <div className="pt-1 text-[10px] text-slate-500">
-                          Order: {res.order?.status || (res.order?.simulated ? "DRY_RUN_SAFE" : "IDLE")}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <pre className="p-4 rounded-xl bg-slate-950 text-emerald-400 font-mono text-xs overflow-x-auto border border-slate-800">
+                {JSON.stringify(simResults, null, 2)}
+              </pre>
             )}
           </div>
         )}
 
-        {/* TAB 4: EXPORT & SYNC BRIDGE */}
+        {/* TAB 6: STRATEGY.JSON & SYNC */}
         {activeTab === 'export' && config && (
-          <div className="space-y-6">
-            <div className="bg-slate-900/80 p-5 rounded-xl border border-slate-800 space-y-3">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div>
-                  <h2 className="text-base font-bold text-white">Configuration Export & Sync Bridge</h2>
-                  <p className="text-xs text-slate-400">
-                    Inspect the authoritative JSON structure and understand how settings reach the Python bot.
-                  </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={copyStrategyJson}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center space-x-1.5 border border-slate-700"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>{copied ? 'Copied!' : 'Copy JSON'}</span>
-                  </button>
-                  <button
-                    onClick={downloadStrategyJson}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center space-x-1.5"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download strategy.json</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Strategy Sync Pathways Explanation */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3">
-                <div className="p-3.5 rounded-lg bg-slate-950/80 border border-slate-800 space-y-1">
-                  <div className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                    <Database className="w-3.5 h-3.5" />
-                    <span>1. Local / Workspace Sync</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    Clicking "Save to strategy.json" writes directly to the disk file <code className="text-slate-300">strategy.json</code>.
-                    The Python bot reads this file on every cycle.
-                  </p>
-                </div>
-
-                <div className="p-3.5 rounded-lg bg-slate-950/80 border border-slate-800 space-y-1">
-                  <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                    <Shield className="w-3.5 h-3.5" />
-                    <span>2. GitHub Actions Secrets</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    Committed to private repo <code className="text-slate-300">therog1/tradebottenanna</code>.
-                    Triggered manually via <code className="text-slate-300">workflow_dispatch</code> in GitHub Actions.
-                  </p>
-                </div>
-
-                <div className="p-3.5 rounded-lg bg-slate-950/80 border border-slate-800 space-y-1">
-                  <div className="text-xs font-bold text-purple-400 flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>3. Cloudflare Edge State</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    Stored in-memory or Cloudflare KV on the worker, protected behind Cloudflare Access Google authentication.
-                  </p>
-                </div>
-              </div>
-
-              {/* JSON Viewer */}
-              <div className="pt-2">
-                <pre className="p-4 rounded-xl bg-slate-950 text-emerald-400 font-mono text-xs overflow-x-auto max-h-[420px] border border-slate-800/90 leading-relaxed">
-                  {JSON.stringify(config, null, 2)}
-                </pre>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 5: DEPLOYMENT GUIDE & CHECKLIST */}
-        {activeTab === 'checklist' && (
-          <div className="space-y-6">
-            <div className="bg-slate-900/80 p-6 rounded-xl border border-slate-800 space-y-5">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-4">
-                <div>
-                  <h2 className="text-base font-bold text-white">TradebottenAnna Deployment & Verification Guide</h2>
-                  <p className="text-xs text-slate-400">
-                    Step-by-step instructions matching the actual project source tree.
-                  </p>
-                </div>
-                <a
-                  href="/api/download-zip"
-                  className="px-4 py-2 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center space-x-1.5"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download Complete Repository ZIP</span>
-                </a>
-              </div>
-
-              {/* Step 1 */}
-              <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
-                <div className="flex items-center space-x-2">
-                  <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">1</span>
-                  <h3 className="text-sm font-bold text-white">Deploy Unified Cloudflare Worker & Static Assets</h3>
-                </div>
-                <p className="text-xs text-slate-400 pl-8">
-                  Deploys both the compiled control panel dashboard and API endpoints to <code className="text-amber-300">tradebottenanna.rogedv.workers.dev</code>:
-                </p>
-                <div className="pl-8 pt-1">
-                  <pre className="p-3 rounded-lg bg-slate-900 text-xs font-mono text-slate-200 border border-slate-800">
-{`# 1. Build the production React control panel
-npm run build
-
-# 2. Configure Gemini secret on the worker
-npx wrangler secret put GEMINI_API_KEY
-
-# 3. Deploy unified worker with static assets
-npx wrangler deploy`}
-                  </pre>
-                </div>
-              </div>
-
-              {/* Step 2 */}
-              <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
-                <div className="flex items-center space-x-2">
-                  <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">2</span>
-                  <h3 className="text-sm font-bold text-white">Configure Cloudflare Access (Google Login for Roger Only)</h3>
-                </div>
-                <p className="text-xs text-slate-400 pl-8">
-                  In Cloudflare Zero Trust dashboard, create a Self-Hosted Application protecting <code className="text-slate-300">tradebottenanna.rogedv.workers.dev</code>:
-                </p>
-                <ul className="pl-12 list-disc text-xs text-slate-300 space-y-1 pt-1">
-                  <li><strong>Application Domain:</strong> tradebottenanna.rogedv.workers.dev</li>
-                  <li><strong>Identity Provider:</strong> Google OAuth</li>
-                  <li><strong>Policy Rule:</strong> Allow emails: <code className="text-amber-300">rogedv@icloud.com</code></li>
-                </ul>
-              </div>
-
-              {/* Step 3 */}
-              <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
-                <div className="flex items-center space-x-2">
-                  <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">3</span>
-                  <h3 className="text-sm font-bold text-white">Execute Python Trading Bot Tests & Manual Demo Runs</h3>
-                </div>
-                <p className="text-xs text-slate-400 pl-8">
-                  Verify the test suite and execute a controlled dry-run:
-                </p>
-                <div className="pl-8 pt-1">
-                  <pre className="p-3 rounded-lg bg-slate-900 text-xs font-mono text-slate-200 border border-slate-800">
-{`# 1. Run unit test suite (16 tests verifying risk, math, and demo flags)
-python3 -m unittest discover -s tests
-
-# 2. Run single controlled cycle
-python3 main.py`}
-                  </pre>
-                </div>
-              </div>
-            </div>
+          <div className="bg-slate-900/80 p-6 rounded-xl border border-slate-800 space-y-4">
+            <h2 className="text-base font-bold text-white">Auktoritativ strategy.json</h2>
+            <pre className="p-4 rounded-xl bg-slate-950 text-emerald-400 font-mono text-xs overflow-x-auto border border-slate-800">
+              {JSON.stringify(config, null, 2)}
+            </pre>
           </div>
         )}
       </main>
@@ -1135,12 +1154,12 @@ python3 main.py`}
           <div className="flex items-center space-x-2">
             <span className="font-semibold text-slate-400">TradebottenAnna v1.2.0</span>
             <span>•</span>
-            <span>OKX EU Demo Trading System</span>
+            <span className="text-emerald-400 font-mono">OKX EU Demo Live Controller</span>
             <span>•</span>
             <span className="text-emerald-400 font-mono">x-simulated-trading: 1</span>
           </div>
           <div>
-            Authorized for <strong className="text-slate-400">rogedv@icloud.com</strong> via Cloudflare Access
+            Körs live mot OKX Demo • Driftsatt på Cloudflare Worker
           </div>
         </div>
       </footer>
