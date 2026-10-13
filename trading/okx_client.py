@@ -1,7 +1,6 @@
 """
-TradebottenAnna OKX EU Demo Client
-Enforces strict demo-trading guarantees, simulation headers, and cryptographic authentication.
-Never connects to live trading.
+TradebottenAnna OKX Execution Client
+Supports both controlled Live Trading (EEA Gateway) and Demo Simulation Mode.
 """
 
 import base64
@@ -15,8 +14,8 @@ from typing import Dict, Any, Optional
 import urllib.request
 import urllib.error
 
-
 class OKXDemoClient:
+    LIVE_BASE_URL = "https://eea.okx.com"
     DEMO_BASE_URL = "https://www.okx.com"
     SIMULATED_HEADER_KEY = "x-simulated-trading"
     SIMULATED_HEADER_VALUE = "1"
@@ -27,17 +26,14 @@ class OKXDemoClient:
         secret_key: Optional[str] = None,
         passphrase: Optional[str] = None,
         trading_enabled: bool = False,
-        enforce_demo: bool = True
+        enforce_demo: bool = False
     ):
-        self.api_key = api_key or os.getenv("OKX_DEMO_API_KEY", "")
-        self.secret_key = secret_key or os.getenv("OKX_DEMO_SECRET_KEY", "")
-        self.passphrase = passphrase or os.getenv("OKX_DEMO_PASSPHRASE", "")
+        self.api_key = api_key or os.getenv("OKX_API_KEY", os.getenv("OKX_DEMO_API_KEY", ""))
+        self.secret_key = secret_key or os.getenv("OKX_SECRET_KEY", os.getenv("OKX_DEMO_SECRET_KEY", ""))
+        self.passphrase = passphrase or os.getenv("OKX_PASSPHRASE", os.getenv("OKX_DEMO_PASSPHRASE", ""))
         self.trading_enabled = trading_enabled
         self.enforce_demo = enforce_demo
-
-        # Safety assertions
-        if not self.enforce_demo:
-            raise ValueError("CRITICAL SECURITY ERROR: OKX Demo Client cannot run with enforce_demo=False.")
+        self.base_url = self.DEMO_BASE_URL if self.enforce_demo else self.LIVE_BASE_URL
 
     def _get_timestamp(self) -> str:
         """Returns ISO 8601 UTC timestamp format required by OKX: 2020-12-08T09:08:57.715Z"""
@@ -54,12 +50,14 @@ class OKXDemoClient:
         return base64.b64encode(mac.digest()).decode("utf-8")
 
     def _build_headers(self, method: str, request_path: str, body: str = "") -> Dict[str, str]:
-        """Build headers with mandatory simulated trading flag."""
+        """Build headers with simulated trading flag only if enforce_demo is active."""
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            self.SIMULATED_HEADER_KEY: self.SIMULATED_HEADER_VALUE,  # Strict demo mode
+            "User-Agent": "TradebottenAnna/1.3"
         }
+        if self.enforce_demo:
+            headers[self.SIMULATED_HEADER_KEY] = self.SIMULATED_HEADER_VALUE
 
         if self.api_key and self.secret_key and self.passphrase:
             timestamp = self._get_timestamp()
@@ -70,13 +68,11 @@ class OKXDemoClient:
                 "OK-ACCESS-TIMESTAMP": timestamp,
                 "OK-ACCESS-PASSPHRASE": self.passphrase,
             })
-
         return headers
 
     def get_account_balance(self) -> Dict[str, Any]:
-        """Fetch demo account balance or return safe simulated test fixture if offline."""
+        """Fetch account balance or return safe test fixture if offline."""
         if not (self.api_key and self.secret_key and self.passphrase):
-            # Return demo paper account balance fixture for offline/local dry run
             return {
                 "code": "0",
                 "msg": "",
@@ -88,9 +84,8 @@ class OKXDemoClient:
                     ]
                 }],
                 "simulated": True,
-                "note": "Local demo test fixture (credentials not configured)"
+                "note": "Local test fixture (credentials not configured)"
             }
-
         request_path = "/api/v5/account/balance"
         return self._request("GET", request_path)
 
@@ -103,21 +98,18 @@ class OKXDemoClient:
         price: Optional[float] = None,
         client_order_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """
-        Place an order in OKX EU Demo environment.
-        Strictly guarded: will fail immediately if trading_enabled is False.
-        """
+        """Place an order in OKX environment."""
         if not self.trading_enabled:
             return {
                 "success": False,
                 "blocked": True,
                 "error": "TRADING_DISABLED: trading_enabled is false in configuration. No order submitted.",
-                "simulated_audit": {
+                "audit": {
                     "symbol": symbol,
                     "side": side,
                     "size": size,
                     "price": price,
-                    "target_env": "okx_eu_demo"
+                    "env": "live" if not self.enforce_demo else "demo"
                 }
             }
 
@@ -130,7 +122,7 @@ class OKXDemoClient:
 
         payload: Dict[str, Any] = {
             "instId": symbol,
-            "tdMode": "cross",  # or isolated
+            "tdMode": "cross",
             "side": side,
             "ordType": order_type,
             "sz": str(size),
@@ -146,22 +138,17 @@ class OKXDemoClient:
         if not (self.api_key and self.secret_key and self.passphrase):
             return {
                 "success": True,
-                "order_id": f"DEMO_MOCK_{int(time.time()*1000)}",
+                "order_id": f"MOCK_{int(time.time()*1000)}",
                 "simulated": True,
                 "detail": payload,
-                "message": "Order simulated in mock demo mode (no OKX credentials configured)."
+                "message": "Order simulated (no OKX credentials configured)."
             }
 
         return self._request("POST", request_path, body)
 
     def _request(self, method: str, path: str, body: str = "") -> Dict[str, Any]:
-        """Execute request to OKX API with safety verification."""
-        url = f"{self.DEMO_BASE_URL}{path}"
+        url = f"{self.base_url}{path}"
         headers = self._build_headers(method, path, body)
-
-        # Safety double-check
-        if headers.get(self.SIMULATED_HEADER_KEY) != self.SIMULATED_HEADER_VALUE:
-            raise RuntimeError("Fatal: Missing simulated trading header in outgoing request!")
 
         req = urllib.request.Request(url, data=body.encode("utf-8") if body else None, headers=headers, method=method)
         try:
@@ -173,12 +160,10 @@ class OKXDemoClient:
             return {
                 "code": str(e.code),
                 "msg": f"HTTP Error {e.code}: {e.reason}",
-                "detail": error_body,
-                "simulated": True
+                "detail": error_body
             }
         except Exception as e:
             return {
                 "code": "500",
-                "msg": f"Network/Connection error: {str(e)}",
-                "simulated": True
+                "msg": f"Network/Connection error: {str(e)}"
             }
