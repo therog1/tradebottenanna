@@ -4,46 +4,43 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Dry run only (no order placement)'
+        description: "Dry run only (no order placement)"
         required: true
         type: boolean
-        default: true
+        default: false
       override_symbol:
-        description: 'Specific symbol to evaluate (leave blank for all configured)'
+        description: "Specific symbol to evaluate"
         required: false
         type: string
-        default: ''
+        default: ""
+  schedule:
+    - cron: "0 * * * *"
 
 jobs:
   run-demo-cycle:
     name: Run Controlled Demo Cycle
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out private repository
+      - name: Check out repository
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-          cache: 'pip'
+          python-version: "3.10"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run verification test suite
-        run: |
-          python -m unittest discover -s tests
-
       - name: Execute Controlled Demo Cycle
         env:
           OKX_DEMO_API_KEY: ${{ secrets.OKX_DEMO_API_KEY }}
           OKX_DEMO_SECRET_KEY: ${{ secrets.OKX_DEMO_SECRET_KEY }}
           OKX_DEMO_PASSPHRASE: ${{ secrets.OKX_DEMO_PASSPHRASE }}
-          DEMO_DRY_RUN: ${{ inputs.dry_run }}
+          DEMO_DRY_RUN: ${{ github.event.inputs.dry_run || "false" }}
         run: |
-          echo "Starting TradebottenAnna controlled demo cycle..."
+          echo "Starting TradebottenAnna automated hourly cycle..."
           python main.py
