@@ -1,4 +1,6 @@
-ccxt>=4.2.0
+# TradebottenAnna Python Trading Engine Dependencies
+# Compatible with Python 3.9+
+requests>=2.31.0
+pydantic>=2.0.0
+pytest>=7.4.0
 python-dotenv>=1.0.0
-streamlit>=1.40.0
-google-genai>=1.0.0

@@ -1,0 +1,8 @@
+{
+  "name": "TradebottenAnna",
+  "description": "TradebottenAnna — Autonomous-assisted crypto strategy control panel, Gemini risk adviser, and OKX EU demo trading engine.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

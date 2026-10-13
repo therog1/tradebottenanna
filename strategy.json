@@ -1,10 +1,31 @@
 {
-  "max_open_positions": 2,
-  "max_margin_fraction": 0.10,
-  "timeframe": "15m",
-  "risk_per_trade_pct": 0.25,
-  "max_leverage": 2,
-  "min_score": 4,
-  "atr_stop_multiple": 1.5,
-  "atr_target_multiple": 3.0
+  "product": "TradebottenAnna",
+  "version": "1.2.0",
+  "environment": "okx_eu_demo",
+  "trading_enabled": false,
+  "strategy": {
+    "risk_per_trade_pct": 1.5,
+    "max_open_positions": 3,
+    "max_margin_fraction": 0.4,
+    "timeframe": "1h",
+    "max_leverage": 3,
+    "min_score": 65,
+    "atr_stop_multiple": 2.0,
+    "atr_target_multiple": 3.0,
+    "symbols": [
+      "BTC-USDT-SWAP",
+      "ETH-USDT-SWAP",
+      "SOL-USDT-SWAP"
+    ]
+  },
+  "risk_limits": {
+    "max_drawdown_stop_pct": 5.0,
+    "kill_switch_active": false,
+    "enforce_demo_headers": true
+  },
+  "metadata": {
+    "last_updated": "2026-10-12T23:50:00Z",
+    "updated_by": "rogedv@icloud.com",
+    "notes": "Safe defaults for OKX EU Demo Trading. Review in TradebottenAnna control panel before updating bot."
+  }
 }
