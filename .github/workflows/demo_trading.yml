@@ -1,4 +1,4 @@
-name: TradebottenAnna Demo Cycle
+name: TradebottenAnna Execution Cycle
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ on:
 
 jobs:
   run-demo-cycle:
-    name: Run Controlled Demo Cycle
+    name: Run Controlled Execution Cycle
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -30,12 +30,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Execute Controlled Demo Cycle
+      - name: Execute Controlled Cycle
         env:
-          OKX_DEMO_API_KEY: ${{ secrets.OKX_DEMO_API_KEY }}
-          OKX_DEMO_SECRET_KEY: ${{ secrets.OKX_DEMO_SECRET_KEY }}
-          OKX_DEMO_PASSPHRASE: ${{ secrets.OKX_DEMO_PASSPHRASE }}
+          OKX_API_KEY: ${{ secrets.OKX_API_KEY || secrets.OKX_DEMO_API_KEY }}
+          OKX_SECRET_KEY: ${{ secrets.OKX_SECRET_KEY || secrets.OKX_DEMO_SECRET_KEY }}
+          OKX_PASSPHRASE: ${{ secrets.OKX_PASSPHRASE || secrets.OKX_DEMO_PASSPHRASE }}
+          OKX_DEMO_API_KEY: ${{ secrets.OKX_API_KEY || secrets.OKX_DEMO_API_KEY }}
+          OKX_DEMO_SECRET_KEY: ${{ secrets.OKX_SECRET_KEY || secrets.OKX_DEMO_SECRET_KEY }}
+          OKX_DEMO_PASSPHRASE: ${{ secrets.OKX_PASSPHRASE || secrets.OKX_DEMO_PASSPHRASE }}
           DEMO_DRY_RUN: "false"
         run: |
-          echo "Starting TradebottenAnna automated hourly cycle..."
+          echo "Starting TradebottenAnna live execution cycle..."
           python main.py
