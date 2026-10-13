@@ -1,29 +1,23 @@
-# ApexFlash — OKX EU demo trading
+# ApexFlash — Rule-based OKX EU demo trader (No AI)
 
-This package adds order submission to the previous diagnostic bot. It is configured for **OKX EEA demo only**: `eea.okx.com` and `x-simulated-trading: 1`. It does not contain a live-trading fallback.
+This version makes **zero AI/API model calls**. Python calculates EMA(9/21/50), RSI(14), ATR(14), and a 5-point trend/momentum/volume score for the 10-symbol watchlist. Signals require `MIN_SCORE` (default 4/5).
 
-## GitHub Actions secrets
-Keep these as repository Actions secrets; never paste them into code or chat:
-- `OKX_API_KEY`
-- `OKX_API_SECRET`
-- `OKX_API_PASSPHRASE`
-- `GEMINI_API_KEY`
+## Only workflow retained
+- `.github/workflows/trading_bot.yml` — the single manual demo-trading workflow.
+- No scheduled workflows, Gemini workflows, market diagnostics, or read-only diagnostic workflows are included.
 
-## Run
-Open **Actions → ApexFlash OKX EU DEMO TRADING → Run workflow**. The workflow runs tests, then checks the 10 configured symbols. It may open a position only when Gemini returns LONG/SHORT, confidence passes the threshold, stop/target levels validate, there is no existing position for the symbol, and the global position cap is not reached. HOLD or any API/model error means no entry.
+## Safety and execution
+- Uses the OKX EEA endpoint `eea.okx.com` and `x-simulated-trading: 1` for authenticated demo requests.
+- `DEMO_TRADING_ENABLED=false` by default. The GitHub manual trading workflow enables it explicitly.
+- 0.25% equity risk per trade by default; capped exposure, maximum two open positions, no duplicate position per symbol.
+- Entries use market orders with attached exchange TP/SL. Verify their status in the OKX EU demo interface.
+- Manual `workflow_dispatch` only. No schedule and no live trading path.
+- All symbols are screened before any orders are submitted. A market-data error aborts the run before the order phase. Any order-phase error stops later order submissions.
 
-The order request attaches stop-loss and take-profit algo instructions to the entry. OKX/CCXT must accept the attached-algo parameters for the specific instrument/account configuration; inspect the action log and verify the resulting order and attached algo orders in the OKX demo interface. Do not assume an order succeeded just because the workflow started.
+## Install / GitHub
+Keep `OKX_API_KEY`, `OKX_API_SECRET`, and `OKX_API_PASSPHRASE` in GitHub Actions Secrets. Do not add credentials to files. Upload the package contents to the repository root, replacing `main.py`, `requirements.txt`, `.env.example`, `README.md`, and `.github/workflows/trading_bot.yml`.
 
-## Risk defaults
-- risk sizing reference: 0.25% of available reported USDT equity
-- max two open positions
-- max notional cap: 10% of equity × 2 leverage per position
-- minimum AI confidence: 72%
-- strategy requires at least 5:1 reward/risk
+Run: Actions → **ApexFlash OKX EU DEMO — No AI** → Run workflow. Start with demo funds and inspect the resulting log and positions.
 
-This is experimental software, not a profit guarantee. The workflow is manual-dispatch only; it does not loop all night by itself. Test a single run and inspect exchange-side positions and attached stop/target orders before enabling any schedule.
-
-
-## Strict Gemini preflight gate
-
-Before any demo order is submitted, the bot fetches market data and obtains a valid Gemini JSON decision for every configured symbol. If any market-data request or Gemini call fails, returns empty/invalid JSON, or produces an invalid decision, the entire run aborts before the order phase. No partial trading run is allowed. Requests are paced using `GEMINI_CALL_INTERVAL_SECONDS` (default 12 seconds) to reduce rate-limit bursts. If an order-phase error occurs, the bot stops immediately; check OKX demo orders and positions before rerunning.
+## Strategy is not proven profitable
+The rules are a transparent baseline, not a validated edge. Backtest with fees, funding, slippage and realistic execution before relying on results.
