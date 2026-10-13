@@ -4,15 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Dry run only (no order placement)"
-        required: true
+        description: "Dry run only"
+        required: false
         type: boolean
         default: false
-      override_symbol:
-        description: "Specific symbol to evaluate"
-        required: false
-        type: string
-        default: ""
   schedule:
     - cron: "0 * * * *"
 
@@ -40,7 +35,7 @@ jobs:
           OKX_DEMO_API_KEY: ${{ secrets.OKX_DEMO_API_KEY }}
           OKX_DEMO_SECRET_KEY: ${{ secrets.OKX_DEMO_SECRET_KEY }}
           OKX_DEMO_PASSPHRASE: ${{ secrets.OKX_DEMO_PASSPHRASE }}
-          DEMO_DRY_RUN: ${{ github.event.inputs.dry_run || "false" }}
+          DEMO_DRY_RUN: "false"
         run: |
           echo "Starting TradebottenAnna automated hourly cycle..."
           python main.py
