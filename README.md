@@ -1,23 +1,24 @@
-# ApexFlash — Rule-based OKX EU demo trader (No AI)
+# ApexFlash Control Panel — GitHub Pages + OKX EU DEMO
 
-This version makes **zero AI/API model calls**. Python calculates EMA(9/21/50), RSI(14), ATR(14), and a 5-point trend/momentum/volume score for the 10-symbol watchlist. Signals require `MIN_SCORE` (default 4/5).
+This repository includes a static visual strategy panel at `docs/index.html`, suitable for GitHub Pages. It provides sliders for strategy parameters, saves settings in the current browser, exports `strategy.json`, and offers optional Gemini advice with a key entered by the user at runtime.
 
-## Only workflow retained
-- `.github/workflows/trading_bot.yml` — the single manual demo-trading workflow.
-- No scheduled workflows, Gemini workflows, market diagnostics, or read-only diagnostic workflows are included.
+## Publish on GitHub Pages
+1. Copy/commit the `docs/` folder to the root of the repository.
+2. Open **Settings → Pages** on GitHub.
+3. Select **Deploy from a branch**, choose your default branch and folder **`/docs`**, then save.
+4. Open the URL shown by GitHub Pages after deployment.
 
-## Safety and execution
-- Uses the OKX EEA endpoint `eea.okx.com` and `x-simulated-trading: 1` for authenticated demo requests.
-- `DEMO_TRADING_ENABLED=false` by default. The GitHub manual trading workflow enables it explicitly.
-- 0.25% equity risk per trade by default; capped exposure, maximum two open positions, no duplicate position per symbol.
-- Entries use market orders with attached exchange TP/SL. Verify their status in the OKX EU demo interface.
-- Manual `workflow_dispatch` only. No schedule and no live trading path.
-- All symbols are screened before any orders are submitted. A market-data error aborts the run before the order phase. Any order-phase error stops later order submissions.
+No terminal, Python install, or server is required for the Pages dashboard.
 
-## Install / GitHub
-Keep `OKX_API_KEY`, `OKX_API_SECRET`, and `OKX_API_PASSPHRASE` in GitHub Actions Secrets. Do not add credentials to files. Upload the package contents to the repository root, replacing `main.py`, `requirements.txt`, `.env.example`, `README.md`, and `.github/workflows/trading_bot.yml`.
+## How to use
+- Adjust the sliders and choose markets.
+- Optionally enter your own Gemini API key and request a proposal. Review the returned values before clicking **Använd förslaget**.
+- Click **Ladda ner strategy.json** and commit that file to the repository root if you want to update the bot configuration.
+- Run the demo trading workflow manually in GitHub Actions.
 
-Run: Actions → **ApexFlash OKX EU DEMO — No AI** → Run workflow. Start with demo funds and inspect the resulting log and positions.
-
-## Strategy is not proven profitable
-The rules are a transparent baseline, not a validated edge. Backtest with fees, funding, slippage and realistic execution before relying on results.
+## Important limitations
+- This static page does not connect to OKX, start GitHub Actions, or submit orders.
+- It cannot automatically commit settings to GitHub; it exports a JSON file for you to commit.
+- The markets selection is exported, but the Python trader must be explicitly coded to read the `symbols` field before that selection affects trading.
+- Gemini calls are made directly from the user's browser using a key entered at runtime. The key is not embedded in the page or stored by the app, but is available to that browser session/devtools and usage may cost money. Never enter OKX credentials here. For a shared/public interface, move Gemini calls to an authenticated backend.
+- The strategy is not proven profitable. Verify the Python trading logic and demo execution separately.

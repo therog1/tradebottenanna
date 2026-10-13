@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """ApexFlash — rule-based OKX EU demo trader. No AI/API model calls."""
-import logging, math, os, sys, time
+import logging, math, os, sys, time, json
 from datetime import datetime, timezone
 import ccxt
 from dotenv import load_dotenv
@@ -13,12 +13,16 @@ OKX_API_KEY=os.getenv('OKX_API_KEY','')
 OKX_API_SECRET=os.getenv('OKX_API_SECRET','')
 OKX_API_PASSPHRASE=os.getenv('OKX_API_PASSPHRASE','')
 DEMO_TRADING_ENABLED=os.getenv('DEMO_TRADING_ENABLED','false').lower()=='true'
-MAX_OPEN_POSITIONS=max(1,min(int(os.getenv('MAX_OPEN_POSITIONS','2')),5))
-MAX_MARGIN_FRACTION=max(0.01,min(float(os.getenv('MAX_MARGIN_FRACTION','0.10')),0.25))
-TIMEFRAME=os.getenv('TIMEFRAME','15m')
-RISK_PER_TRADE_PCT=max(0.05,min(float(os.getenv('RISK_PER_TRADE_PCT','0.25')),0.5))
-MAX_LEVERAGE=max(1,min(int(os.getenv('MAX_LEVERAGE','2')),3))
-MIN_SCORE=max(3,min(int(os.getenv('MIN_SCORE','4')),5))
+DEFAULTS={'max_open_positions':2,'max_margin_fraction':0.10,'timeframe':'15m','risk_per_trade_pct':0.25,'max_leverage':2,'min_score':4,'atr_stop_multiple':1.5,'atr_target_multiple':3.0}
+try:
+    with open(os.path.join(os.path.dirname(__file__),'strategy.json'),encoding='utf-8') as _f: STRATEGY={**DEFAULTS,**json.load(_f)}
+except (OSError, ValueError): STRATEGY=DEFAULTS.copy()
+MAX_OPEN_POSITIONS=max(1,min(int(STRATEGY['max_open_positions']),5))
+MAX_MARGIN_FRACTION=max(0.01,min(float(STRATEGY['max_margin_fraction']),0.25))
+TIMEFRAME=str(STRATEGY['timeframe'])
+RISK_PER_TRADE_PCT=max(0.05,min(float(STRATEGY['risk_per_trade_pct']),0.5))
+MAX_LEVERAGE=max(1,min(int(STRATEGY['max_leverage']),3))
+MIN_SCORE=max(3,min(int(STRATEGY['min_score']),5))
 SYMBOLS=['BTC/USDT:USDT','ETH/USDT:USDT','SOL/USDT:USDT','AVAX/USDT:USDT','SUI/USDT:USDT','XRP/USDT:USDT','DOGE/USDT:USDT','LINK/USDT:USDT','ADA/USDT:USDT','LTC/USDT:USDT']
 SUMMARY_PATH=os.getenv('GITHUB_STEP_SUMMARY','')
 
@@ -65,8 +69,8 @@ def analyze(candles):
     if long_score>=MIN_SCORE and long_score>short_score: action='LONG'; score=long_score
     elif short_score>=MIN_SCORE and short_score>long_score: action='SHORT'; score=short_score
     price=closes[-1]
-    if action=='LONG': sl=price-1.5*atr; tp=price+3.0*atr
-    elif action=='SHORT': sl=price+1.5*atr; tp=price-3.0*atr
+    if action=='LONG': sl=price-float(STRATEGY['atr_stop_multiple'])*atr; tp=price+float(STRATEGY['atr_target_multiple'])*atr
+    elif action=='SHORT': sl=price+float(STRATEGY['atr_stop_multiple'])*atr; tp=price-float(STRATEGY['atr_target_multiple'])*atr
     else: sl=tp=None
     return {'price':price,'ema9':e9,'ema21':e21,'ema50':e50,'rsi':rv,'atr':atr,'volume_ok':vol_ok,'long_score':long_score,'short_score':short_score,'action':action,'score':score,'stop_loss':sl,'take_profit':tp,'reason':f'long={long_score}/5 short={short_score}/5 RSI={rv:.1f} volume_ok={vol_ok}'}
 
