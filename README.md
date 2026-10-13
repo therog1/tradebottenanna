@@ -1,28 +1,26 @@
-# TradebottenAnna Control Panel — GitHub Pages + OKX EU DEMO
+# TradebottenAnna — komplett repository
 
-This repository includes a static visual strategy panel at `docs/index.html`, suitable for GitHub Pages. It provides sliders for strategy parameters, saves settings in the current browser, exports `strategy.json`, and offers optional Gemini advice with a key entered by the user at runtime.
+Det här paketet innehåller kontrollpanelen, Gemini-rådgivarens Cloudflare Worker och en regelbaserad Python-bot för **OKX EU DEMO**. Standardläget skickar inga order. Ingen API-nyckel ska någonsin läggas i HTML eller committas till Git.
 
-## Publish on GitHub Pages
-1. Copy/commit the `docs/` folder to the root of the repository.
-2. Open **Settings → Pages** on GitHub.
-3. Select **Deploy from a branch**, choose your default branch and folder **`/docs`**, then save.
-4. Open the URL shown by GitHub Pages after deployment.
+## Kontrollpanel (GitHub Pages)
+1. Lägg innehållet i ZIP-filen i roten av ditt privata repo `therog1/tradebottenanna` och committa.
+2. GitHub → **Settings → Pages** → **Deploy from a branch** → branch `main` → folder `/docs` → Save.
+3. Kontrollpanelen blir normalt `https://therog1.github.io/tradebottenanna/` (om GitHub Pages är aktiverat för repot/kontot). Använd den adressen för sliders; `https://tradebottenanna.rogedv.workers.dev/` är API:t och visar hälsostatus-JSON.
 
-No terminal, Python install, or server is required for the Pages dashboard.
+## Gemini-backend (Cloudflare Worker)
+1. Cloudflare → Workers & Pages → Worker `tradebottenanna` → **Edit code**.
+2. Ersätt worker-koden med `cloudflare-worker/index.js` och Deploy.
+3. Settings → Variables and Secrets: skapa **Secret** `GEMINI_API_KEY` med din Gemini-nyckel. Inte en vanlig Variable.
+4. Cloudflare Access måste skydda Worker-hostnamnet och endast tillåta ditt Google-konto. CORS är inte autentisering.
+5. Worker tillåter Pages-origin `https://therog1.github.io` och endpoint `/api/advice`. Om Pages publiceras på en annan origin måste allowlist ändras och Worker deployas igen.
 
-## How to use
-- Adjust the sliders and choose markets.
-- Optionally enter your own Gemini API key and request a proposal. Review the returned values before clicking **Använd förslaget**.
-- Click **Ladda ner strategy.json** and commit that file to the repository root if you want to update the bot configuration.
-- Run the demo trading workflow manually in GitHub Actions.
+## Bot / GitHub Actions
+- Workflow `TradebottenAnna — safe dry run` körs manuellt via **Actions** och använder endast publik marknadsdata; den har inte OKX-hemligheter och skickar inga order.
+- `DEMO_TRADING_ENABLED` är `false` som standard. Ändra inte till `true` förrän OKX-nycklarna är skapade med demo-behörighet och endast demo används. Då krävs GitHub Secrets `OKX_API_KEY`, `OKX_API_SECRET`, `OKX_API_PASSPHRASE` och en separat medveten ändring av workflow.
+- Kontrollpanelen exporterar `strategy.json`; ladda ned och committa filen i repo-roten för att boten ska läsa inställningarna. Panelen committar inte automatiskt.
 
-## Important limitations
-- This static page does not connect to OKX, start GitHub Actions, or submit orders.
-- It cannot automatically commit settings to GitHub; it exports a JSON file for you to commit.
-- The markets selection is exported, but the Python trader must be explicitly coded to read the `symbols` field before that selection affects trading.
-- Gemini calls are made directly from the user's browser using a key entered at runtime. The key is not embedded in the page or stored by the app, but is available to that browser session/devtools and usage may cost money. Never enter OKX credentials here. For a shared/public interface, move Gemini calls to an authenticated backend.
-- The strategy is not proven profitable. Verify the Python trading logic and demo execution separately.
+## Gemini-nyckel
+Om en nyckel visades i en skärmbild eller lades in som vanlig Cloudflare Variable, återkalla den i Google AI Studio och skapa en ny. Spara den nya endast som Cloudflare **Secret**.
 
-
-## Gemini backend and secure setup
-See [`cloudflare-worker/README.md`](cloudflare-worker/README.md) for the Cloudflare Worker source, Secret setup, Access protection, and GitHub Pages integration steps.
+## Viktigt
+Det här är ett startpaket, inte en garanti för att allt är driftsatt eller lönsamt. GitHub Pages, Cloudflare Worker och Access är separata tjänster och kräver stegen ovan. Håll orderhandel avstängd tills du själv har verifierat konfigurationen.
