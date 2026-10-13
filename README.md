@@ -1,4 +1,4 @@
-# ApexFlash Control Panel — GitHub Pages + OKX EU DEMO
+# TradebottenAnna Control Panel — GitHub Pages + OKX EU DEMO
 
 This repository includes a static visual strategy panel at `docs/index.html`, suitable for GitHub Pages. It provides sliders for strategy parameters, saves settings in the current browser, exports `strategy.json`, and offers optional Gemini advice with a key entered by the user at runtime.
 
@@ -22,3 +22,7 @@ No terminal, Python install, or server is required for the Pages dashboard.
 - The markets selection is exported, but the Python trader must be explicitly coded to read the `symbols` field before that selection affects trading.
 - Gemini calls are made directly from the user's browser using a key entered at runtime. The key is not embedded in the page or stored by the app, but is available to that browser session/devtools and usage may cost money. Never enter OKX credentials here. For a shared/public interface, move Gemini calls to an authenticated backend.
 - The strategy is not proven profitable. Verify the Python trading logic and demo execution separately.
+
+
+## Gemini backend and secure setup
+See [`cloudflare-worker/README.md`](cloudflare-worker/README.md) for the Cloudflare Worker source, Secret setup, Access protection, and GitHub Pages integration steps.

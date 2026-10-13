@@ -1,4 +1,4 @@
-# ApexFlash — 10 asset paper build
+# TradebottenAnna — 10 asset paper build
 
 ## What changed
 - Watchlist expanded from 5 to 10: BTC, ETH, SOL, AVAX, SUI, XRP, DOGE, LINK, ADA, LTC.
@@ -13,7 +13,7 @@ Unzip this archive. Upload/replace the contents of the extracted repository fold
 Do not delete existing GitHub Secrets. The paper workflow needs `GEMINI_API_KEY`; OKX private keys are not needed by this paper build.
 
 ## Run
-GitHub → Actions → ApexFlash OKX Paper Test → Run workflow.
+GitHub → Actions → TradebottenAnna OKX Paper Test → Run workflow.
 Review the logs for each symbol. Any symbol not present/active on OKX EU is safely skipped and shown as an error/hold row.
 
 ## Safety

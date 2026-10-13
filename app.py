@@ -33,8 +33,8 @@ def validate(data):
 def save_config(data):
     CONFIG.write_text(json.dumps(validate(data), indent=2) + '\n', encoding='utf-8')
 
-st.set_page_config(page_title='ApexFlash Control', page_icon='⚡', layout='wide')
-st.title('⚡ ApexFlash Control Panel')
+st.set_page_config(page_title='TradebottenAnna Control', page_icon='⚡', layout='wide')
+st.title('⚡ TradebottenAnna Control Panel')
 st.caption('OKX EU · DEMO ONLY · regelbaserad trading · AI används endast som valfri rådgivare')
 st.warning('Det här gränssnittet ändrar strategiparametrar. Det startar inte tradingbotten och aktiverar aldrig livehandel. GitHub Actions använder den strategy.json-version som du committar till repot.')
 config = load_config()
@@ -98,5 +98,5 @@ with right:
 
 st.divider()
 st.subheader('Så används inställningarna')
-st.markdown('1. Justera reglagen eller be Gemini om råd.  2. Spara/ladda ner `strategy.json`.  3. Ersätt `strategy.json` i GitHub-repot och committa ändringen.  4. Kör **Actions → ApexFlash OKX EU DEMO — No AI → Run workflow**.')
+st.markdown('1. Justera reglagen eller be Gemini om råd.  2. Spara/ladda ner `strategy.json`.  3. Ersätt `strategy.json` i GitHub-repot och committa ändringen.  4. Kör **Actions → TradebottenAnna OKX EU DEMO — No AI → Run workflow**.')
 st.caption('Säkerhetsgränser i botkoden begränsar fortfarande risk, hävstång och antal positioner. AI kan bara föreslå konfigurationsvärden och kan aldrig anropa OKX eller lägga order från dashboarden.')

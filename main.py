@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ApexFlash — rule-based OKX EU demo trader. No AI/API model calls."""
+"""TradebottenAnna — rule-based OKX EU demo trader. No AI/API model calls."""
 import logging, math, os, sys, time, json
 from datetime import datetime, timezone
 import ccxt
@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 logging.basicConfig(level=os.getenv('LOG_LEVEL','INFO'), format='%(asctime)s [%(levelname)s] %(message)s', handlers=[logging.StreamHandler(sys.stdout)])
-log=logging.getLogger('ApexFlash')
+log=logging.getLogger('TradebottenAnna')
 EXCHANGE_ID=os.getenv('EXCHANGE_ID','okx').lower()
 OKX_API_KEY=os.getenv('OKX_API_KEY','')
 OKX_API_SECRET=os.getenv('OKX_API_SECRET','')
@@ -101,13 +101,13 @@ def submit_demo_order(ex,symbol,signal,equity):
 def write_summary(rows,equity):
     if not SUMMARY_PATH: return
     with open(SUMMARY_PATH,'a',encoding='utf-8') as f:
-        f.write('## ApexFlash — regelbaserad OKX EU DEMO-rapport\n\n')
+        f.write('## TradebottenAnna — regelbaserad OKX EU DEMO-rapport\n\n')
         f.write(f'- UTC: `{datetime.now(timezone.utc).isoformat()}`\n- AI-anrop: **0**\n- Handel: **OKX EU DEMO ONLY**; order enabled: `{DEMO_TRADING_ENABLED}`\n- Equity (USDT): `{equity:.4f}`\n\n')
         f.write('| Symbol | Signal | Score | Pris | RSI | Resultat |\n|---|---|---:|---:|---:|---|\n')
         for r in rows: f.write(f"| {r['symbol']} | {r['action']} | {r['score']}/5 | {r['price']:.8f} | {r['rsi']:.1f} | {r['status']} |\n")
 
 def main():
-    log.info('='*58); log.info('APEXFLASH — RULE-BASED OKX EU DEMO TRADER'); log.info('UTC %s',datetime.now(timezone.utc).isoformat())
+    log.info('='*58); log.info('TRADEBOTTENANNA — RULE-BASED OKX EU DEMO TRADER'); log.info('UTC %s',datetime.now(timezone.utc).isoformat())
     log.info('AI calls=0 | endpoint=eea.okx.com | simulated-trading header required | demo enabled=%s',DEMO_TRADING_ENABLED)
     ex=make_exchange(private=DEMO_TRADING_ENABLED); equity=1000.0
     if DEMO_TRADING_ENABLED:
