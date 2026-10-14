@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
  * AITradingIntelligenceField – isolerat, read-only visualiseringsfält.
  * - Ren WebGL (inga nya beroenden, inget CDN), NOLL AI-anrop.
  * - Data: endast ./data/status.json. Saknade värden visas som "okänt" – inget hittas på.
- * - Botarna är pausade: fältet visar "stoppad" och simulerar ingen handelsaktivitet.
+ * - Botstatus härleds från status.json (färsk + ok = LIVE), aldrig hårdkodad.
  */
 
 type Mode = 'ANNA' | 'LENA' | 'RESEARCH';
@@ -32,6 +32,8 @@ interface FieldData {
 }
 
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
+const botStatus = (a: AccMetrics) =>
+  !a.fetchedAt ? OKANT : !a.ok ? 'FEL vid hämtning' : a.stale ? 'okänt (gammal data)' : 'LIVE (körs)';
 const emptyAcc: AccMetrics = { ok: false, stale: true };
 
 function accMetrics(a: any): AccMetrics {
@@ -269,7 +271,7 @@ export function AITradingIntelligenceField() {
 
   const metrics = useMemo((): [string, string][] => {
     if (mode === 'ANNA') return [
-      ['Botstatus', 'STOPPAD (pausad)'],
+      ['Botstatus', botStatus(data.anna)],
       ['Trend', OKANT],
       ['Volatilitet', OKANT],
       ['Equity', fmtUsd(data.anna.equity)],
@@ -278,7 +280,7 @@ export function AITradingIntelligenceField() {
       ['Datans ålder', fmtAge(data.anna.ageMin)],
     ];
     if (mode === 'LENA') return [
-      ['Botstatus', 'STOPPAD (pausad)'],
+      ['Botstatus', botStatus(data.lena)],
       ['OBI', OKANT],
       ['Spread', OKANT],
       ['Avvisade signaler', OKANT],
