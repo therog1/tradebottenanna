@@ -4,6 +4,7 @@ import { OverviewStats } from './components/OverviewStats';
 import { BotCardsSection } from './components/BotCardsSection';
 import { TradesHistoryTable } from './components/TradesHistoryTable';
 import { ActivePositionsTable } from './components/ActivePositionsTable';
+import { AITradingIntelligenceField } from './components/AITradingIntelligenceField';
 import { loadStatusFeed } from './services/statusFeed';
 import { TradingStore } from './services/tradingStore';
 import { Trade, Position, BotConfig, MarketFlow } from './types';
@@ -332,6 +333,9 @@ export default function App() {
               </div>
               <BotCardsSection bots={bots} />
             </div>
+
+            {/* AI Trading Intelligence Field (read-only visualisering, ingen AI) */}
+            <AITradingIntelligenceField />
 
             {/* Active Positions Summary */}
             <div className="space-y-2">
