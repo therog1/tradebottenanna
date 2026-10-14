@@ -12,6 +12,10 @@ on:
   schedule:
     - cron: "0 * * * *"
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   run-demo-cycle:
     name: Run Controlled Execution Cycle
@@ -42,3 +46,9 @@ jobs:
         run: |
           echo "Starting TradebottenAnna execution cycle (DRY_RUN=$DRY_RUN)..."
           python main.py
+
+      - name: Refresh dashboard status feed (read-only)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run status-feed.yml -R "$GITHUB_REPOSITORY" --ref main || echo "status-feed dispatch failed (non-fatal)"
