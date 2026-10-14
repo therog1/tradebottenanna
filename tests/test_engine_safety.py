@@ -334,3 +334,20 @@ def test_futures_instrument_lookup_uses_futures_type():
     with mock.patch.object(OKXClient, "_get", return_value=[XPERP]) as g:
         c.get_instrument("BTC-USD_UM_XPERP-310404")
     assert g.call_args[0][1]["instType"] == "FUTURES"
+
+
+# ------------------------------------------------ risk base = USDC only
+def test_risk_base_is_usdc_not_total_equity():
+    # 1000 USD total, but only 100 USDC -> per-trade cap 1 USD
+    fake = FakeOKX(total_eq="1000", details=[{"ccy": "SUI", "eq": "900"}, {"ccy": "USDC", "eq": "100"}])
+    out = run_bot_cycle(cfg(), client=fake, dry_run=False)
+    assert out["equity_usd"] == 100.0 and out["total_risk_cap_usd"] == 3.0
+    o = fake.orders[0]
+    risk = abs(Decimal(fake.last) - Decimal(o["sl_trigger_px"])) * Decimal(o["size_contracts"]) * Decimal("0.01")
+    assert risk <= Decimal("1.0")
+
+
+def test_missing_usdc_aborts():
+    fake = FakeOKX(total_eq="1000", details=[{"ccy": "SUI", "eq": "1000"}])
+    out = run_bot_cycle(cfg(), client=fake, dry_run=False)
+    assert out["status"] == "aborted" and fake.orders == []
