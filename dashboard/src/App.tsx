@@ -22,10 +22,9 @@ import {
   Terminal,
   Cpu
 } from 'lucide-react';
-import { GrokHandoverPanel } from './components/GrokHandoverPanel';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'HISTORY' | 'POSITIONS' | 'GROK_BRIDGE'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'HISTORY' | 'POSITIONS'>('OVERVIEW');
 
   // Core Trading State
   const [bots, setBots] = useState<BotConfig[]>(() => TradingStore.getBots());
@@ -252,7 +251,6 @@ export default function App() {
 
       {/* Header */}
       <Header
-        onOpenGrokBridge={() => setActiveTab('GROK_BRIDGE')}
         onRefresh={() => { window.dispatchEvent(new Event('tb-refresh')); }}
         okxBalanceData={okxBalanceData}
       />
@@ -308,20 +306,6 @@ export default function App() {
 
 
 
-          <button
-            onClick={() => setActiveTab('GROK_BRIDGE')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
-              activeTab === 'GROK_BRIDGE'
-                ? 'bg-indigo-900/70 text-indigo-200 border border-indigo-600 shadow-sm'
-                : 'text-slate-400 hover:text-indigo-300 hover:bg-slate-900/50'
-            }`}
-          >
-            <Cpu className="w-4 h-4 text-indigo-400 animate-pulse" />
-            <span>Grok Command Bridge</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-indigo-950 text-indigo-300 border border-indigo-800 font-mono">
-              BEFÄL
-            </span>
-          </button>
         </div>
 
         {/* TAB 1: OVERVIEW */}
@@ -402,17 +386,6 @@ export default function App() {
 
 
 
-        {/* TAB 7: GROK COMMAND BRIDGE (HANDOVER & LEADERSHIP) */}
-        {activeTab === 'GROK_BRIDGE' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <GrokHandoverPanel
-              onCopySuccess={msg => showToast(msg)}
-              combinedEquityUSD={okxBalanceData?.totalEquityUSD}
-              annaEquityUSD={okxBalanceData?.anna?.totalEquityUSD}
-              lenaEquityUSD={okxBalanceData?.lena?.totalEquityUSD}
-            />
-          </div>
-        )}
       </main>
 
       {/* Footer */}
