@@ -6,6 +6,7 @@ name: Status feed (read-only)
 on:
   workflow_dispatch:
   schedule:
+    - cron: '7,37 * * * *'
     - cron: '11,41 * * * *'
 
 permissions:
