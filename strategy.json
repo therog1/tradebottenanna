@@ -13,9 +13,9 @@
     "atr_stop_multiple": 2,
     "atr_target_multiple": 3,
     "symbols": [
-      "BTC-USDT-SWAP",
-      "ETH-USDT-SWAP",
-      "SOL-USDT-SWAP"
+      "BTC-USD_UM_XPERP",
+      "ETH-USD_UM_XPERP",
+      "SOL-USD_UM_XPERP"
     ]
   },
   "risk_limits": {
