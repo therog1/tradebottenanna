@@ -33,12 +33,10 @@ jobs:
 
       - name: Execute Controlled Cycle
         env:
-          OKX_API_KEY: ${{ secrets.OKX_API_KEY || secrets.OKX_DEMO_API_KEY }}
-          OKX_SECRET_KEY: ${{ secrets.OKX_SECRET_KEY || secrets.OKX_DEMO_SECRET_KEY }}
-          OKX_PASSPHRASE: ${{ secrets.OKX_PASSPHRASE || secrets.OKX_DEMO_PASSPHRASE }}
-          OKX_DEMO_API_KEY: ${{ secrets.OKX_API_KEY || secrets.OKX_DEMO_API_KEY }}
-          OKX_DEMO_SECRET_KEY: ${{ secrets.OKX_SECRET_KEY || secrets.OKX_DEMO_SECRET_KEY }}
-          OKX_DEMO_PASSPHRASE: ${{ secrets.OKX_PASSPHRASE || secrets.OKX_DEMO_PASSPHRASE }}
+          # Anna = only OKX_ANNA_* (no fallback), chosen by Roger 2026-10-14
+          OKX_API_KEY: ${{ secrets.OKX_ANNA_KEY }}
+          OKX_SECRET_KEY: ${{ secrets.OKX_ANNA_SECRET }}
+          OKX_PASSPHRASE: ${{ secrets.OKX_ANNA_PASS }}
           # schedule -> live; manual dispatch -> dry run unless dry_run=false is chosen
           DRY_RUN: ${{ github.event_name == 'schedule' && 'false' || (inputs.dry_run == false && 'false' || 'true') }}
         run: |
