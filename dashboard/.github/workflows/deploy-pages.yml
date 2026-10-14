@@ -1,8 +1,7 @@
 name: Deploy Dashboard to GitHub Pages
 
 on:
-  push:
-    branches: ["main"]
+  # Endast manuellt. Ingen automatisk publicering av saldon/orderhistorik.
   workflow_dispatch:
 
 permissions:

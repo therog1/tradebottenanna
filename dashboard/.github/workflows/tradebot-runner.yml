@@ -1,63 +1,34 @@
-name: Tradebot Scheduled Execution Engine
+name: Tradebot Dashboard Telemetry (READ-ONLY, manuell)
 
+# Ägarskap: Lena = OKX_AGGR_*, Anna = OKX_ANNA_*. Dashboarden/runnern LÄSER bara.
+# Inget schema. Inga OKX-secrets. Lägger aldrig ordrar.
 on:
-  schedule:
-    # Körs var 15:e minut för Lena OBI-scalper och Anna swing-kontroll
-    - cron: '*/15 * * * *'
   workflow_dispatch:
-    inputs:
-      bot:
-        description: 'Välj bot att köra'
-        required: true
-        default: 'lena'
-        type: choice
-        options:
-          - lena
-          - anna
-          - both
-      dry_run:
-        description: 'Dry run / paper mode (inga skarpa ordrar placeras)'
-        required: false
-        default: false
-        type: boolean
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: tradebot-dashboard-telemetry
+  cancel-in-progress: false
 
 jobs:
-  run-trading-cycle:
+  telemetry:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
-
-      - name: Install Dependencies
+      - name: Install
         run: npm ci || npm install
-
-      - name: Execute Quantitative Trading Cycle
-        env:
-          # Inga nycklar finns i webbläsaren! Allt hämtas från säkra GitHub Repository Secrets:
-          OKX_AGGR_KEY: ${{ secrets.OKX_AGGR_KEY }}
-          OKX_AGGR_SECRET: ${{ secrets.OKX_AGGR_SECRET }}
-          OKX_AGGR_PASS: ${{ secrets.OKX_AGGR_PASS }}
-          OKX_ANNA_KEY: ${{ secrets.OKX_ANNA_KEY }}
-          OKX_ANNA_SECRET: ${{ secrets.OKX_ANNA_SECRET }}
-          OKX_ANNA_PASS: ${{ secrets.OKX_ANNA_PASS }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
-          TARGET_BOT: ${{ github.event.inputs.bot || 'both' }}
-        run: |
-          npx tsx scripts/run_trading_cycle.ts
-
-      - name: Commit Updated Status (Read-Only Telemetry)
-        run: |
-          git config --global user.name "Tradebot Quantitative Engine"
-          git config --global user.email "bot@tradebottenanna.local"
-          git add public/data/status.json
-          git diff --staged --quiet || (git commit -m "chore(telemetry): update live OKX status & positions [skip ci]" && git push)
+      - name: Build status (utan nycklar => allt "okänt")
+        run: npx tsx scripts/run_trading_cycle.ts
+      - name: Upload status as artifact (ingen commit/push)
+        uses: actions/upload-artifact@v4
+        with:
+          name: status
+          path: dashboard/public/data/status.json
