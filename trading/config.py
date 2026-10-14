@@ -16,6 +16,7 @@ class StrategyParameters:
     max_margin_fraction: float = 0.4
     timeframe: str = "1h"
     max_leverage: int = 3
+    min_leverage: int = 3
     min_score: int = 65
     atr_stop_multiple: float = 2.0
     atr_target_multiple: float = 3.0
@@ -33,6 +34,8 @@ class StrategyParameters:
             errors.append(f"timeframe ({self.timeframe}) is not supported")
         if not (1 <= self.max_leverage <= 10):
             errors.append(f"max_leverage ({self.max_leverage}) must be between 1 and 10 (conservative demo cap)")
+        if not (1 <= self.min_leverage <= self.max_leverage):
+            errors.append(f"min_leverage ({self.min_leverage}) must be between 1 and max_leverage")
         if not (50 <= self.min_score <= 95):
             errors.append(f"min_score ({self.min_score}) must be between 50 and 95")
         if not (0.5 <= self.atr_stop_multiple <= 5.0):
@@ -101,6 +104,7 @@ def load_strategy_config(file_path: Optional[str] = None) -> BotConfig:
         max_margin_fraction=float(strat_data.get("max_margin_fraction", 0.4)),
         timeframe=str(strat_data.get("timeframe", "1h")),
         max_leverage=int(strat_data.get("max_leverage", 3)),
+        min_leverage=int(strat_data.get("min_leverage", 3)),
         min_score=int(strat_data.get("min_score", 65)),
         atr_stop_multiple=float(strat_data.get("atr_stop_multiple", 2.0)),
         atr_target_multiple=float(strat_data.get("atr_target_multiple", 3.0)),

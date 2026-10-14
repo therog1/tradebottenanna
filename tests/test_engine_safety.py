@@ -8,7 +8,7 @@ from main import run_bot_cycle, parse_candles, MAX_TOTAL_OPEN_RISK_PCT
 from trading.config import BotConfig, StrategyParameters, RiskLimits
 from trading.okx_client import OKXClient
 from trading.reconcile import reconcile
-from trading.sizing import InstrumentSpec, size_contracts
+from trading.sizing import InstrumentSpec, size_contracts, choose_leverage_and_size
 from tests.fake_okx import FakeOKX, BTC, make_candles
 
 
@@ -195,6 +195,7 @@ def test_reconcile_skips_symbol_with_open_position():
                    algos=[{"instId": "BTC-USDT-SWAP", "slTriggerPx": "59000"}])
     out = run_bot_cycle(cfg(), client=fake, dry_run=False)
     assert fake.orders == [] and out["results"][0]["reason"] == "position already open"
+    assert fake.leverage_calls == []  # never re-levers an instrument with an open position
 
 
 def test_reconcile_pending_orders_block():
@@ -351,3 +352,26 @@ def test_missing_usdc_aborts():
     fake = FakeOKX(total_eq="1000", details=[{"ccy": "SUI", "eq": "1000"}])
     out = run_bot_cycle(cfg(), client=fake, dry_run=False)
     assert out["status"] == "aborted" and fake.orders == []
+
+
+# ------------------------------------------------------- dynamic leverage
+def test_dynamic_leverage_picks_lowest_that_fits():
+    # want 10 ct (risk budget 100 / 10 per ct); 10 ct = 6000 notional; margin budget 1000 -> needs 6x
+    r, lev = choose_leverage_and_size(SPEC, 60000, 59000, 100, 1000, 3, 10)
+    assert lev == 6 and r["contracts"] == Decimal("10.00") and r["limited_by"] == "risk"
+    assert r["risk_usd"] == Decimal("100.00")  # per-trade risk unchanged by leverage
+
+
+def test_dynamic_leverage_stays_at_min_when_margin_is_plenty():
+    r, lev = choose_leverage_and_size(SPEC, 60000, 59000, 10, 10_000, 3, 10)
+    assert lev == 3 and r["contracts"] == Decimal("1.00")
+
+
+def test_dynamic_leverage_caps_at_max():
+    r, lev = choose_leverage_and_size(SPEC, 60000, 59000, 1000, 300, 3, 10)
+    assert lev == 10 and r["limited_by"] == "margin" and r["contracts"] == Decimal("5.00")
+
+
+def test_strategy_json_max_leverage_10():
+    s = json.load(open("strategy.json"))["strategy"]
+    assert s["max_leverage"] == 10 and s["min_leverage"] == 3
