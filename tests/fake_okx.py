@@ -19,7 +19,7 @@ BTC = {"instId": "BTC-USDT-SWAP", "ctVal": "0.01", "lotSz": "0.01", "minSz": "0.
 
 class FakeOKX:
     def __init__(self, equity="1000", positions=None, pending=None, algos=None, pos_mode="net_mode",
-                 fail=(), instruments=None, candles=None, last="63600"):
+                 fail=(), details=None, total_eq=None, instruments=None, candles=None, last="63600"):
         self.trading_enabled = False
         self.equity = equity
         self.positions = positions or []
@@ -30,6 +30,8 @@ class FakeOKX:
         self.instruments = instruments or {"BTC-USDT-SWAP": BTC}
         self.candles = candles if candles is not None else make_candles()
         self.last = last
+        self.details = details
+        self.total_eq = total_eq
         self.orders = []
         self.calls = []
         self.leverage_calls = []
@@ -46,7 +48,9 @@ class FakeOKX:
 
     def get_balance(self):
         self._chk("balance")
-        return {"totalEq": self.equity}
+        if self.details is not None:
+            return {"totalEq": self.total_eq or self.equity, "details": self.details}
+        return {"totalEq": self.equity, "details": [{"ccy": "USDC", "eq": self.equity}] if self.equity else []}
 
     def get_account_config(self):
         self._chk("config"); return {"posMode": self.pos_mode}

@@ -41,6 +41,19 @@ MAX_TOTAL_OPEN_RISK_PCT = Decimal("3.0")
 BAR_MAP = {"15m": "15m", "30m": "30m", "1h": "1H", "2h": "2H", "4h": "4H", "1d": "1Dutc"}
 
 
+# Risk base = equity in the margin/settlement currency only (X-Perp margins in USDC),
+# never other coins in the account.
+MARGIN_CCY = "USDC"
+
+
+def margin_equity(bal: Dict[str, Any], ccy: str = MARGIN_CCY) -> Decimal:
+    """USDC equity from balance details. Missing -> 0 (cycle aborts)."""
+    for d in bal.get("details") or []:
+        if d.get("ccy") == ccy:
+            return D(d.get("eq") or "0")
+    return Decimal(0)
+
+
 def dry_run_from_env() -> bool:
     """Dry-run unless DRY_RUN (or legacy DEMO_DRY_RUN) is explicitly 'false'."""
     val = os.getenv("DRY_RUN", os.getenv("DEMO_DRY_RUN", "true"))
@@ -79,12 +92,13 @@ def run_bot_cycle(config: BotConfig, client: Optional[OKXClient] = None, dry_run
     # 1. Equity -- no fallback.
     try:
         bal = client.get_balance()
-        equity = D(bal.get("totalEq") or "0")
+        total_eq = bal.get("totalEq")
+        equity = margin_equity(bal)
     except Exception as e:
         return _abort(f"balance read failed: {e}")
     if equity <= 0:
-        return _abort(f"balance not usable (totalEq={bal.get('totalEq')!r})")
-    logger.info(f"Equity: {equity:.2f} USD")
+        return _abort(f"{MARGIN_CCY} balance not usable ({MARGIN_CCY} eq={equity}, totalEq={total_eq!r})")
+    logger.info(f"Risk base: {equity:.2f} {MARGIN_CCY} (margin currency only; account totalEq {total_eq} USD)")
 
     # 2. Reconcile.
     spec_cache: Dict[str, InstrumentSpec] = {}
