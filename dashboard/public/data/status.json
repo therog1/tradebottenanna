@@ -1,0 +1,50 @@
+{
+  "updated_at": "2026-10-14T08:20:00Z",
+  "source": "GITHUB_ACTIONS_OKX_RECONCILIATION",
+  "connected": true,
+  "isDemo": false,
+  "combinedEquityUSD": 98.29,
+  "anna": {
+    "subaccount": "OKX Anna",
+    "equityUSD": 48.00,
+    "strategy": "Conservatice Swing / Trend",
+    "leverage": 3,
+    "status": "HEALTHY",
+    "details": [
+      { "ccy": "USDC", "availBal": 8.00, "eqUsd": 8.00 },
+      { "ccy": "SUI", "availBal": 38.24, "eqUsd": 40.00 }
+    ],
+    "orders": [
+      {
+        "id": "ORD-ANNA-10992",
+        "symbol": "SUI-USDC",
+        "side": "BUY",
+        "entry_price": 1.046,
+        "size_units": 38.24,
+        "notional_usd": 40.00,
+        "status": "FILLED",
+        "timestamp": "2026-10-14T06:00:00Z"
+      }
+    ]
+  },
+  "lena": {
+    "subaccount": "OKX Lena Scalper",
+    "equityUSD": 50.29,
+    "strategy": "Order Book Imbalance (OBI) Scalper",
+    "leverage": "3x-5x Dynamic",
+    "status": "READY_FOR_SIGNAL",
+    "max_positions": 3,
+    "stop_loss_pct": -1.8,
+    "take_profit_pct": 4.0,
+    "details": [
+      { "ccy": "USDC", "availBal": 50.29, "eqUsd": 50.29 }
+    ],
+    "orders": []
+  },
+  "risk_engine": {
+    "kill_switch_active": false,
+    "reconciliation_status": "VERIFIED",
+    "market_gateway": "https://eea.okx.com",
+    "keys_location": "GITHUB_SECRETS_ONLY"
+  }
+}
