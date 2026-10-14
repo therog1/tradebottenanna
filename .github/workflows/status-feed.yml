@@ -2,7 +2,7 @@ name: Status feed (read-only)
 
 # Endast läsande OKX GET-anrop (saldo, positioner, öppna ordrar, SL/TP-algo-ordrar, senaste fills).
 # Inga order-/trade-endpoints, inga AI-anrop. Skriver sanerad data/status.json till gh-pages.
-# Schema: var 30:e minut (sparar Actions-minuter). Lena-data hämtas från Lena-repots publika feed-branch.
+# Schema: var 30:e minut (sparar Actions-minuter). Båda kontona hämtas här (ingen workflow i Lena-repot).
 on:
   workflow_dispatch:
   schedule:
@@ -29,21 +29,27 @@ jobs:
 
       - name: Fetch Anna (read-only GET)
         env:
-          # Anna = OKX_ANNA_* ; i detta repo finns i dag bara OKX_API_* (Annas nyckel) som fallback.
-          FEED_KEY: ${{ secrets.OKX_ANNA_KEY || secrets.OKX_API_KEY }}
-          FEED_SECRET: ${{ secrets.OKX_ANNA_SECRET || secrets.OKX_API_SECRET }}
-          FEED_PASS: ${{ secrets.OKX_ANNA_PASS || secrets.OKX_API_PASSPHRASE }}
+          # Anna = endast OKX_ANNA_* (ingen fallback).
+          FEED_KEY: ${{ secrets.OKX_ANNA_KEY }}
+          FEED_SECRET: ${{ secrets.OKX_ANNA_SECRET }}
+          FEED_PASS: ${{ secrets.OKX_ANNA_PASS }}
         run: |
           for v in FEED_KEY FEED_SECRET FEED_PASS; do
             val="${!v}"; [ -n "$val" ] && echo "::add-mask::$val"
           done
           python3 src/scripts/status_feed.py fetch --account anna --out out/anna.json
 
-      - name: Fetch Lena feed (public, already sanitized)
+      - name: Fetch Lena (read-only GET)
+        env:
+          # Lena = endast OKX_AGGR_* (ingen fallback).
+          FEED_KEY: ${{ secrets.OKX_AGGR_KEY }}
+          FEED_SECRET: ${{ secrets.OKX_AGGR_SECRET }}
+          FEED_PASS: ${{ secrets.OKX_AGGR_PASS }}
         run: |
-          curl -fsS --max-time 15 -o out/lena.json \
-            https://raw.githubusercontent.com/therog1/tradebottenaggresivalena/status-feed/data/lena.json \
-            || echo "Lena-feed saknas"
+          for v in FEED_KEY FEED_SECRET FEED_PASS; do
+            val="${!v}"; [ -n "$val" ] && echo "::add-mask::$val"
+          done
+          python3 src/scripts/status_feed.py fetch --account lena --out out/lena.json
 
       - name: Merge + re-sanitize (allowlist)
         run: python3 src/scripts/status_feed.py merge --anna out/anna.json --lena out/lena.json --out out/status.json

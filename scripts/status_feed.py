@@ -62,7 +62,11 @@ def okx_get(path, key, secret, passphrase):
         with urllib.request.urlopen(req, timeout=15) as r:
             return json.loads(r.read().decode())
     except urllib.error.HTTPError as e:
-        return {"code": str(e.code), "msg": f"HTTP {e.code}", "data": []}
+        try:  # OKX felkod/meddelande ur svaret (bara code+msg används, saneras i clean_err)
+            body = json.loads(e.read().decode() or "{}")
+            return {"code": str(body.get("code") or e.code), "msg": f"HTTP {e.code} {body.get('msg', '')}", "data": []}
+        except Exception:
+            return {"code": str(e.code), "msg": f"HTTP {e.code}", "data": []}
     except Exception as e:  # nätverk/timeout
         return {"code": "-1", "msg": type(e).__name__, "data": []}
 
