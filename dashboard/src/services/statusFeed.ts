@@ -49,7 +49,9 @@ const toPositions = (a: any, bot: Position['bot']): Position[] =>
     return {
       id: `FEED-${bot === 'Aggressiva Lena' ? 'LENA' : 'ANNA'}-${p.instId ?? i}`,
       bot,
-      symbol: String(p.instId ?? 'okänt'),
+      symbol: `${String(p.instId ?? 'okänt')}${p.product ? ` · ${p.product}` : ''}${
+        (Array.isArray(a?.algo_orders) ? a.algo_orders : []).some((o: any) => o?.instId === p.instId && o?.slTriggerPx != null)
+          ? ' · SL hos OKX' : ' · INGEN SL hos OKX'}`,
       side: p.posSide === 'short' || pos < 0 ? 'SELL' : 'BUY',
       entry_price: avg,
       current_price: mark,
