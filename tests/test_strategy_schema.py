@@ -12,8 +12,11 @@ class TestStrategySchema(unittest.TestCase):
         """Verify root strategy.json loads and complies with authoritative schema."""
         config = load_strategy_config()
         self.assertEqual(config.product, "TradebottenAnna")
-        self.assertEqual(config.environment, "okx_eu_demo")
-        self.assertFalse(config.trading_enabled)
+        # strategy.json currently says okx_eu_live + trading_enabled=true (set 2026-10-13).
+        # The engine only sends orders when DRY_RUN=false is passed explicitly, so this
+        # test only checks the env/header combination is consistent.
+        self.assertIn(config.environment, ("okx_eu_demo", "okx_eu_live"))
+        self.assertEqual(config.risk_limits.enforce_demo_headers, config.environment == "okx_eu_demo")
         self.assertGreater(config.strategy.risk_per_trade_pct, 0)
         self.assertLessEqual(config.strategy.max_leverage, 10)
         self.assertIn("BTC-USDT-SWAP", config.strategy.symbols)

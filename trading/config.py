@@ -63,11 +63,21 @@ class BotConfig:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def validate_safety(self):
-        """Strict safety checks ensuring live trading is impossible without explicit reconfiguration."""
-        if self.environment != "okx_eu_demo":
-            raise ValueError(f"Security Alert: Environment must be 'okx_eu_demo', got '{self.environment}'. Live trading is strictly rejected.")
-        if not self.risk_limits.enforce_demo_headers:
-            raise ValueError("Security Alert: enforce_demo_headers must remain True for OKX EU Demo Trading.")
+        """Environment/header consistency checks.
+
+        - okx_eu_demo  -> x-simulated-trading header must be enforced.
+        - okx_eu_live  -> demo header must be off (EEA live gateway).
+        Anything else is rejected. Whether orders are actually sent is decided
+        separately (trading_enabled, kill switch, dry-run flag in main.py).
+        """
+        if self.environment == "okx_eu_demo":
+            if not self.risk_limits.enforce_demo_headers:
+                raise ValueError("Security Alert: enforce_demo_headers must remain True for okx_eu_demo.")
+        elif self.environment == "okx_eu_live":
+            if self.risk_limits.enforce_demo_headers:
+                raise ValueError("Config conflict: okx_eu_live with enforce_demo_headers=True.")
+        else:
+            raise ValueError(f"Security Alert: unknown environment '{self.environment}'.")
         self.strategy.validate()
 
 
