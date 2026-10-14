@@ -4,8 +4,8 @@ import { Github, CheckCircle2, RefreshCw, ExternalLink, GitCommit, Play, X, Shie
 interface GitHubModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onTriggerWorkflow: () => Promise<void>;
-  isTriggering: boolean;
+  onTriggerWorkflow?: () => Promise<void>;
+  isTriggering?: boolean;
 }
 
 export const GitHubModal: React.FC<GitHubModalProps> = ({
@@ -102,14 +102,7 @@ export const GitHubModal: React.FC<GitHubModalProps> = ({
               <span className="text-slate-500 text-[11px]">
                 Senaste commits inkluderar fixar för: marknadssäljorder, trades_history.json & OKX historikanrop.
               </span>
-              <button
-                onClick={onTriggerWorkflow}
-                disabled={isTriggering}
-                className="flex items-center gap-1 px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white font-medium transition disabled:opacity-50 shrink-0"
-              >
-                <Play className="w-3 h-3 fill-current" />
-                <span>{isTriggering ? 'Startar...' : 'Kör Actions'}</span>
-              </button>
+              <span className="text-[11px] text-slate-500 shrink-0">Read-only: körs aldrig härifrån</span>
             </div>
           </div>
 

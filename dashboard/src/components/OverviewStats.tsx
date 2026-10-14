@@ -1,4 +1,5 @@
 import React from 'react';
+import { fmtUsd, isKnown } from '../utils/format';
 import { Trade, Position } from '../types';
 import { TrendingUp, TrendingDown, Wallet, ShieldCheck, DollarSign, Layers } from 'lucide-react';
 
@@ -13,9 +14,9 @@ interface OverviewStatsProps {
 export const OverviewStats: React.FC<OverviewStatsProps> = ({
   trades,
   positions,
-  totalEquityUSD = 97.64,
-  annaEquityUSD = 47.64,
-  lenaEquityUSD = 50.00,
+  totalEquityUSD,
+  annaEquityUSD,
+  lenaEquityUSD,
 }) => {
   // Realized PnL from closed exits
   const closedWins = trades.filter(t => t.realized_pnl > 0);
@@ -37,13 +38,13 @@ export const OverviewStats: React.FC<OverviewStatsProps> = ({
           </div>
           <div className="mt-2 flex items-baseline gap-1.5 font-mono">
             <span className="text-2xl font-bold text-slate-100">
-              ${totalEquityUSD.toFixed(2)}
+              {fmtUsd(totalEquityUSD)}
             </span>
             <span className="text-xs text-emerald-400 font-sans">USD</span>
           </div>
           <div className="mt-1 text-xs text-slate-400 flex items-center justify-between font-mono">
-            <span>Anna: <b className="text-slate-300">${annaEquityUSD.toFixed(2)}</b></span>
-            <span>Lena: <b className="text-slate-300">${lenaEquityUSD.toFixed(2)}</b></span>
+            <span>Anna: <b className="text-slate-300">{fmtUsd(annaEquityUSD)}</b></span>
+            <span>Lena: <b className="text-slate-300">{fmtUsd(lenaEquityUSD)}</b></span>
           </div>
         </div>
 
@@ -107,11 +108,11 @@ export const OverviewStats: React.FC<OverviewStatsProps> = ({
           </div>
           <div className="mt-2 flex items-baseline gap-1.5 font-mono">
             <span className="text-2xl font-bold text-slate-100">
-              ${(totalEquityUSD - totalExposure).toFixed(2)}
+              {isKnown(totalEquityUSD) ? fmtUsd(totalEquityUSD - totalExposure) : 'okänt'}
             </span>
           </div>
           <div className="mt-1 text-xs text-slate-400">
-            <span>Lena: $50.00 • Anna: $7.91</span>
+            <span>Lena: okänt • Anna: okänt</span>
           </div>
         </div>
       </div>
@@ -130,7 +131,7 @@ export const OverviewStats: React.FC<OverviewStatsProps> = ({
         <div className="flex items-center gap-4 text-slate-300 font-mono text-[11px]">
           <span>Anna: <b className="text-emerald-400">38.19 SUI</b> + <b className="text-slate-100">7.91 USDC</b></span>
           <span className="text-slate-600">|</span>
-          <span>Lena: <b className="text-cyan-400">50.00 USDC</b> i kassan redo för scalping</span>
+          <span>Lena: <b className="text-cyan-400">okänt</b> (ej verifierat mot OKX)</span>
         </div>
       </div>
     </div>

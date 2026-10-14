@@ -72,7 +72,7 @@ export const TradesHistoryTable: React.FC<TradesHistoryTableProps> = ({
               Skarpa ordrar och säkrade vinster från OKX
             </h4>
             <p className="text-xs text-slate-300/90 mt-0.5 leading-relaxed">
-              Alla visade ordrar nedan är 100% skarpa och hämtade direkt från OKX. Anna håller för närvarande <b>38.19 SUI</b> och Lena har <b>50.00 USDC</b> redo i kassan som säkrar vinst vid Take Profit (+4.0%) eller Trailing Stop.
+              Ordrarna nedan kan innehålla demo-/exempeldata och är inte avstämda mot OKX. Saldon: okänt.
             </p>
           </div>
         </div>

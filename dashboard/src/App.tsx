@@ -45,8 +45,9 @@ export default function App() {
   const [isOKXModalOpen, setIsOKXModalOpen] = useState(false);
   const [okxBalanceData, setOkxBalanceData] = useState<any>(() => {
     try {
-      const s = localStorage.getItem('tb_okx_balance_cache_v1');
-      return s ? JSON.parse(s) : null;
+      localStorage.removeItem('tb_okx_balance_cache_v1');
+      localStorage.removeItem('tb_okx_keys_v1'); // rensa ev. tidigare sparade nycklar
+      return null;
     } catch {
       return null;
     }
@@ -95,7 +96,7 @@ export default function App() {
           }
         }
 
-        if (data && (data.success || data.combinedEquityUSD)) {
+        if (data && data.success && typeof data.combinedEquityUSD === 'number') {
           setOkxBalanceData({
             connected: true,
             isDemo: false,
@@ -118,54 +119,8 @@ export default function App() {
           // Build live positions directly from real OKX account holdings
           const livePositions: Position[] = [];
 
-          // Anna's real SUI holding
-          const suiDetail = data.anna?.details?.find((d: any) => d.ccy === 'SUI');
-          if (suiDetail && suiDetail.availBal > 0) {
-            livePositions.push({
-              id: 'POS-ANNA-LIVE-SUI',
-              bot: 'Tradebotten Anna',
-              symbol: 'SUI-USDC',
-              side: 'BUY',
-              entry_price: 1.046,
-              current_price: Math.round((suiDetail.eqUsd / suiDetail.availBal) * 10000) / 10000,
-              high_price: 1.060,
-              size_units: Math.round(suiDetail.availBal * 100) / 100,
-              allocated_usd: 40.0,
-              unrealized_pnl: Math.round((suiDetail.eqUsd - 40.0) * 100) / 100,
-              pnl_pct: Math.round(((suiDetail.eqUsd - 40.0) / 40.0) * 10000) / 100,
-              trailing_stop_dist_pct: 0.8,
-              opened_at: new Date().toISOString()
-            });
-          }
-
-          // Check if Lena holds any crypto (other than USDC cash)
-          const lenaCrypto = data.lena?.details?.filter((d: any) => d.ccy !== 'USDC' && d.availBal > 0) || [];
-          lenaCrypto.forEach((c: any) => {
-            // Find recent buy order for entry price
-            const matchedOrder = data.lena?.orders?.find((o: any) => o.symbol === `${c.ccy}-USDC` && o.side === 'BUY');
-            const entryPrice = matchedOrder?.entry_price || (c.eqUsd / c.availBal);
-            const currentPrice = c.eqUsd / c.availBal;
-            const allocatedUsd = matchedOrder?.notional_usd || 17.50;
-            const unrealizedPnl = Math.round((c.eqUsd - allocatedUsd) * 100) / 100;
-            const pnlPct = Math.round(((c.eqUsd - allocatedUsd) / allocatedUsd) * 10000) / 100;
-
-            livePositions.push({
-              id: `POS-LENA-LIVE-${c.ccy}`,
-              bot: 'Aggressiva Lena',
-              symbol: `${c.ccy}-USDC`,
-              side: 'BUY',
-              entry_price: entryPrice,
-              current_price: currentPrice,
-              high_price: Math.max(entryPrice, currentPrice),
-              size_units: Math.round(c.availBal * 10000) / 10000,
-              allocated_usd: Math.round(allocatedUsd * 100) / 100,
-              unrealized_pnl: unrealizedPnl,
-              pnl_pct: pnlPct,
-              trailing_stop_dist_pct: 0.9,
-              opened_at: matchedOrder?.entry_time || new Date().toISOString()
-            });
-          });
-
+          // Positioner härleds inte längre från saldon med hårdkodade entry-priser/allokeringar (påhittad PnL).
+          // Visas först när en verifierad positionskälla (OKX /account/positions via botarnas egen state) finns.
           setPositions(livePositions);
         }
       } catch (err) {
@@ -282,23 +237,7 @@ export default function App() {
     }
   };
 
-  // 5. Trigger GitHub Workflow via API
-  const handleTriggerLenaWorkflow = async () => {
-    setIsTriggeringWorkflow(true);
-    try {
-      const res = await fetch('/api/github/trigger-workflow', { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        showToast('🚀 Lena scalp workflow triggat på GitHub Actions (therog1/tradebottenaggresivalena)!');
-      } else {
-        showToast(`Workflow skickat (${data.message || 'Dispatched'}).`);
-      }
-    } catch (err: any) {
-      showToast(`Kunde inte starta GitHub Actions: ${err.message}`);
-    } finally {
-      setIsTriggeringWorkflow(false);
-    }
-  };
+  // Trigger av GitHub-workflows borttagen: dashboarden är read-only.
 
   // 6. Simulate scalping a pair in scanner
   const handleSimulateScalp = (symbol: string) => {
@@ -500,9 +439,9 @@ export default function App() {
             <OverviewStats
               trades={trades}
               positions={positions}
-              totalEquityUSD={okxBalanceData?.totalEquityUSD || 97.64}
-              annaEquityUSD={okxBalanceData?.anna?.totalEquityUSD || 47.64}
-              lenaEquityUSD={okxBalanceData?.lena?.totalEquityUSD || 50.00}
+              totalEquityUSD={okxBalanceData?.totalEquityUSD}
+              annaEquityUSD={okxBalanceData?.anna?.totalEquityUSD}
+              lenaEquityUSD={okxBalanceData?.lena?.totalEquityUSD}
             />
 
             {/* Side-by-side bot cards */}
@@ -517,7 +456,6 @@ export default function App() {
               </div>
               <BotCardsSection
                 bots={bots}
-                onTriggerLenaWorkflow={handleTriggerLenaWorkflow}
                 onRunBotCycle={slug => setCycleModalSlug(slug)}
                 onOpenSettings={bot => setSettingsBot(bot)}
                 isTriggeringWorkflow={isTriggeringWorkflow}
@@ -621,9 +559,9 @@ export default function App() {
           <div className="space-y-4 animate-in fade-in duration-200">
             <GrokHandoverPanel
               onCopySuccess={msg => showToast(msg)}
-              combinedEquityUSD={okxBalanceData?.totalEquityUSD || 97.64}
-              annaEquityUSD={okxBalanceData?.anna?.totalEquityUSD || 47.64}
-              lenaEquityUSD={okxBalanceData?.lena?.totalEquityUSD || 50.00}
+              combinedEquityUSD={okxBalanceData?.totalEquityUSD}
+              annaEquityUSD={okxBalanceData?.anna?.totalEquityUSD}
+              lenaEquityUSD={okxBalanceData?.lena?.totalEquityUSD}
             />
           </div>
         )}
@@ -645,7 +583,6 @@ export default function App() {
       <GitHubModal
         isOpen={isGitHubModalOpen}
         onClose={() => setIsGitHubModalOpen(false)}
-        onTriggerWorkflow={handleTriggerLenaWorkflow}
         isTriggering={isTriggeringWorkflow}
       />
 
@@ -655,8 +592,7 @@ export default function App() {
         onBalanceUpdated={data => {
           setOkxBalanceData(data);
           if (data) {
-            localStorage.setItem('tb_okx_balance_cache_v1', JSON.stringify(data));
-            showToast(`OKX-saldo uppdaterat: $${data.totalEquityUSD.toFixed(2)} USD (${data.isDemo ? 'Demo' : 'Skarpt'})`);
+            showToast('Saldo uppdaterat (read-only).');
           }
         }}
       />

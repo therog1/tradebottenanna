@@ -20,43 +20,18 @@ Som beslutat i arkitekturen:
 
 ## 🚀 Snabbstart för Kodaren
 
-### Steg 1: Packa upp och initiera Git
-```bash
-# Skapa projektmapp och packa upp
-mkdir -p tradebottenanna
-cd tradebottenanna
-unzip ../tradebottenanna-v2.3-export.zip
+### Steg 1: Import (ingen force-push)
+Koden importeras under `dashboard/` på branchen `import/dashboard-v2.3` i therog1/tradebottenanna och granskas via en **draft-PR**. Kör aldrig `git init` + `git push --force` mot main.
 
-# Initiera git
-git init
-git add .
-git commit -m "feat: Tradebot Command Center v2.3 with zero-key GitHub Pages + Actions engine"
-git branch -M main
-
-# Koppla till GitHub-repositoryt
-git remote add origin https://github.com/therog1/tradebottenanna.git
-git push -u origin main --force
-```
-
-### Steg 2: Lägg till Secrets i GitHub Repo
-Gå till ditt repository på GitHub:  
-**Settings** -> **Secrets and variables** -> **Actions** -> **New repository secret**
-
-Lägg till följande hemligheter:
-- `OKX_AGGR_KEY`: API-nyckel för Aggressiva Lena (OKX underkonto)
-- `OKX_AGGR_SECRET`: Secret Key för Aggressiva Lena
-- `OKX_AGGR_PASS`: Passphrase för Aggressiva Lena
-- `OKX_ANNA_KEY`: API-nyckel för Tradebotten Anna (OKX underkonto)
-- `OKX_ANNA_SECRET`: Secret Key för Tradebotten Anna
-- `OKX_ANNA_PASS`: Passphrase för Tradebotten Anna
-- `GEMINI_API_KEY`: För AI Optimizer-parametertuning (valfritt)
+### Steg 2: Secrets
+Dashboarden och dess runner använder **inga OKX-secrets**. Ägarskap: Lena = `OKX_AGGR_*` (Lena-repot), Anna = `OKX_ANNA_*` (Annas motor). Ändra inga secrets för dashboarden.
 
 ### Steg 3: Aktivera GitHub Pages
 Gå till:  
 **Settings** -> **Pages**  
 Under **Build and deployment** -> **Source**: Välj **"GitHub Actions"**.
 
-Arbetsflödet `.github/workflows/deploy-pages.yml` kommer nu automatiskt bygga och driftsätta dashboarden helt gratis vid varje push till `main`!
+`deploy-pages.yml` körs endast manuellt (`workflow_dispatch`). Pages-inställningar ändras inte i denna PR.
 
 ---
 

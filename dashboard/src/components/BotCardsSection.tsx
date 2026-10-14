@@ -4,10 +4,10 @@ import { Zap, ShieldCheck, Play, Settings2, Github, Terminal, CheckCircle2, Cloc
 
 interface BotCardsSectionProps {
   bots: BotConfig[];
-  onTriggerLenaWorkflow: () => Promise<void>;
+  onTriggerLenaWorkflow?: () => Promise<void>; // borttagen: dashboarden startar inga workflows
   onRunBotCycle: (botSlug: 'anna' | 'lena') => void;
   onOpenSettings: (bot: BotConfig) => void;
-  isTriggeringWorkflow: boolean;
+  isTriggeringWorkflow?: boolean;
 }
 
 export const BotCardsSection: React.FC<BotCardsSectionProps> = ({
@@ -181,15 +181,6 @@ export const BotCardsSection: React.FC<BotCardsSectionProps> = ({
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               <span>Kör skalp-cykel</span>
-            </button>
-            <button
-              onClick={onTriggerLenaWorkflow}
-              disabled={isTriggeringWorkflow}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 transition disabled:opacity-50"
-              title="Trigga GitHub Actions på therog1/tradebottenaggresivalena direkt"
-            >
-              <Github className="w-3.5 h-3.5" />
-              <span>{isTriggeringWorkflow ? 'Skickar...' : 'Kör i GitHub'}</span>
             </button>
             <button
               onClick={() => onOpenSettings(lena)}

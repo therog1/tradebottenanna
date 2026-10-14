@@ -42,7 +42,7 @@ export const BotCycleModal: React.FC<BotCycleModalProps> = ({
     if (botSlug === 'lena') {
       log(`⚡ Initierar Ken Griffin Momentum Scalp Cycle (Aggressiva Lena)...`);
       await delay(400);
-      log(`Subaccount Equity: ~$50.00 | OKX Live Gateway: Active (eea.okx.com)`);
+      log(`Subaccount Equity: okänt | Simulering – inga ordrar skickas`);
       await delay(400);
       log(`Hävstång: Min ${bot?.min_leverage || 3}x – Max ${bot?.max_leverage || 5}x (Dynamisk Futures / Cross Margin)`);
       await delay(400);

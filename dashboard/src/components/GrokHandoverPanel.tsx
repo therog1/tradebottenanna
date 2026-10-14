@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fmtUsd } from '../utils/format';
 import {
   Terminal,
   Cpu,
@@ -110,9 +111,9 @@ Bekräfta att du har tagit emot denna instruktion, sammanfatta systemets status 
 
 export const GrokHandoverPanel: React.FC<GrokHandoverPanelProps> = ({
   onCopySuccess,
-  combinedEquityUSD = 97.64,
-  annaEquityUSD = 47.64,
-  lenaEquityUSD = 50.00
+  combinedEquityUSD,
+  annaEquityUSD,
+  lenaEquityUSD
 }) => {
   const [copied, setCopied] = useState(false);
   const [copiedGitCmds, setCopiedGitCmds] = useState(false);
@@ -137,7 +138,7 @@ git add .
 git commit -m "feat: Tradebot Command Center v2.3 with zero-key GitHub Actions engine"
 git branch -M main
 git remote add origin https://github.com/therog1/tradebottenanna.git
-git push -u origin main --force
+# Ingen force-push. Import sker via branch + draft-PR (import/dashboard-v2.3).
 
 # 3. Aktivera GitHub Pages
 # Gå till GitHub Repo -> Settings -> Pages -> Source: 'GitHub Actions'`;
@@ -437,7 +438,7 @@ git push -u origin main --force
               </div>
               <div className="flex justify-between text-slate-400">
                 <span>Subkonto Saldo:</span>
-                <span className="text-emerald-400 font-bold">${annaEquityUSD.toFixed(2)} USD</span>
+                <span className="text-emerald-400 font-bold">{fmtUsd(annaEquityUSD)} USD</span>
               </div>
               <div className="flex justify-between text-slate-400">
                 <span>Körschema:</span>
@@ -475,7 +476,7 @@ git push -u origin main --force
               </div>
               <div className="flex justify-between text-slate-400">
                 <span>Subkonto Saldo:</span>
-                <span className="text-emerald-400 font-bold">${lenaEquityUSD.toFixed(2)} USD</span>
+                <span className="text-emerald-400 font-bold">{fmtUsd(lenaEquityUSD)} USD</span>
               </div>
               <div className="flex justify-between text-slate-400">
                 <span>Körschema:</span>

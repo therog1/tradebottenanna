@@ -1,4 +1,5 @@
 import React from 'react';
+import { fmtUsd } from '../utils/format';
 import { ShieldAlert, Github, Activity, RefreshCw, Zap, Power, Cpu } from 'lucide-react';
 
 interface HeaderProps {
@@ -60,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
             <Activity className="w-3.5 h-3.5 text-emerald-400" />
             {okxBalanceData?.connected ? (
               <span>
-                SKARPT SALDO: <b>${okxBalanceData.totalEquityUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</b>
+                SALDO (read-only): <b>{fmtUsd(okxBalanceData.totalEquityUSD)} USD</b>
               </span>
             ) : (
               <span>Koppla OKX Saldo</span>

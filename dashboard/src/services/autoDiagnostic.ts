@@ -150,9 +150,9 @@ export async function runFullDiagnostic(): Promise<FullDiagnosticReport> {
     tests.push({
       name: 'Lena Säljorder- & Historiklogik',
       category: 'CODE_INTEGRITY',
-      status: 'HEALED',
-      details: 'Upptäckte saknad historik- eller säljorderlogik - reparerad och synkad.',
-      autoFixed: true,
+      status: 'FAIL',
+      details: 'Förväntad logik hittades inte i bot.py. Ingenting har reparerats automatiskt – kräver manuell granskning.',
+      autoFixed: false,
     });
   }
 
