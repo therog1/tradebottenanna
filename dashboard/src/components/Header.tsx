@@ -61,10 +61,10 @@ export const Header: React.FC<HeaderProps> = ({
             <Activity className="w-3.5 h-3.5 text-emerald-400" />
             {okxBalanceData?.connected ? (
               <span>
-                SALDO (read-only): <b>{fmtUsd(okxBalanceData.totalEquityUSD)} USD</b>
+                SALDO (read-only): <b>{fmtUsd(okxBalanceData.totalEquityUSD)}</b> · Anna {fmtUsd(okxBalanceData.anna?.totalEquityUSD)} · Lena {fmtUsd(okxBalanceData.lena?.totalEquityUSD)}{okxBalanceData.generatedAt ? ` · ${String(okxBalanceData.generatedAt).slice(11,16)} UTC` : ''}
               </span>
             ) : (
-              <span>Koppla OKX Saldo</span>
+              <span>Saldo: okänt{okxBalanceData?.stale ? ' (inaktuell data)' : ''}</span>
             )}
           </button>
 

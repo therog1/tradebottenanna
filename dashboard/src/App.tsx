@@ -10,6 +10,7 @@ import { GitHubModal } from './components/GitHubModal';
 import { BotCycleModal } from './components/BotCycleModal';
 import { DiagnosticPanel } from './components/DiagnosticPanel';
 import { OKXConnectModal } from './components/OKXConnectModal';
+import { loadStatusFeed } from './services/statusFeed';
 import { TradingStore } from './services/tradingStore';
 import { Trade, Position, BotConfig, MarketFlow } from './types';
 import {
@@ -77,7 +78,24 @@ export default function App() {
           // Dev proxy unavailable, likely static deployment
         }
 
-        // Ingen statisk status.json: den publicerade sidan visar inga saldon/positioner/order (okänt).
+        // Statisk sida: läs den sanerade read-only-feeden (data/status.json). Saknas/inaktuell => okänt.
+        if (!data || !data.success) {
+          const feed = await loadStatusFeed();
+          if (feed) {
+            setOkxBalanceData({
+              connected: !feed.stale && (feed.anna.ok || feed.lena.ok),
+              isDemo: false,
+              totalEquityUSD: feed.totalEquityUSD,
+              anna: { totalEquityUSD: feed.anna.totalEquityUSD, errors: feed.anna.errors },
+              lena: { totalEquityUSD: feed.lena.totalEquityUSD, errors: feed.lena.errors },
+              generatedAt: feed.generatedAt,
+              stale: feed.stale,
+              source: 'STATUS_FEED_READ_ONLY'
+            });
+            setPositions(feed.positions);
+          }
+          return;
+        }
 
         if (data && data.success && typeof data.combinedEquityUSD === 'number') {
           setOkxBalanceData({
