@@ -4,6 +4,7 @@ name: Status feed cron (trigger)
 # Startar bara status-feed.yml via workflow_dispatch. Inga secrets, inga OKX-anrop.
 on:
   schedule:
+    - cron: '22,52 * * * *'
     - cron: '26,56 * * * *'
   workflow_dispatch:
 
