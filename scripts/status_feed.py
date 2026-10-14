@@ -26,7 +26,7 @@ ALLOWED_GET = {
 HIST_FIELDS = ["instType", "instId", "ordType", "side", "sz", "accFillSz", "avgPx", "state", "cTime", "uTime"]
 BAL_FIELDS = ["ccy", "eq", "eqUsd", "availBal", "availEq", "upl"]
 POS_FIELDS = ["instId", "instType", "mgnMode", "posSide", "pos", "avgPx", "markPx", "upl", "uplRatio",
-              "lever", "liqPx", "margin", "cTime", "uTime", "product", "is_perp"]
+              "lever", "liqPx", "margin", "cTime", "uTime", "product", "is_perp", "ctVal", "ctValCcy"]
 
 
 def classify(inst_id, inst_type):
@@ -49,7 +49,7 @@ ORD_FIELDS = ["instType", "instId", "ordType", "side", "sz", "px", "state", "acc
 ALGO_FIELDS = ["instId", "ordType", "side", "sz", "slTriggerPx", "tpTriggerPx", "state", "cTime"]
 FILL_FIELDS = ["instId", "side", "fillPx", "fillSz", "fee", "feeCcy", "execType", "ts"]
 NUMERIC = set("eq eqUsd availBal availEq upl pos avgPx markPx uplRatio lever liqPx margin sz px accFillSz "
-              "slTriggerPx tpTriggerPx fillPx fillSz fee totalEq cTime uTime ts".split())
+              "ctVal slTriggerPx tpTriggerPx fillPx fillSz fee totalEq cTime uTime ts".split())
 STRINGY = re.compile(r"^[A-Za-z0-9_\-\.]{0,40}$")
 
 
@@ -111,6 +111,35 @@ def _okx_get_once(path, key, secret, passphrase):
         return {"code": "-1", "msg": type(e).__name__, "data": []}
 
 
+PUBLIC_INST = re.compile(r"^/api/v5/public/instruments\?instType=(FUTURES|SWAP)&instId=[A-Z0-9_\-]{3,40}$")
+
+
+def public_ct_val(inst_id, inst_type):
+    """Publik, osignerad GET av kontraktsstorlek (ctVal). Inga nycklar skickas."""
+    if inst_type not in ("FUTURES", "SWAP"):
+        return None, None
+    path = f"/api/v5/public/instruments?instType={inst_type}&instId={inst_id}"
+    if not PUBLIC_INST.match(path):
+        return None, None
+    try:
+        req = urllib.request.Request(BASE + path, method="GET", headers={"User-Agent": "tradebot-status-feed/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            d = (json.loads(r.read().decode()).get("data") or [{}])[0]
+        return _val("ctVal", d.get("ctVal")), _val("ctValCcy", d.get("ctValCcy"))
+    except Exception:
+        return None, None
+
+
+def with_ct_val(positions):
+    cache = {}
+    for p in positions:
+        k = (p.get("instId"), p.get("instType"))
+        if k not in cache:
+            cache[k] = public_ct_val(*k)
+        p["ctVal"], p["ctValCcy"] = cache[k]
+    return positions
+
+
 def fetch_account(name):
     key, secret, pw = (os.environ.get(v, "") for v in ("FEED_KEY", "FEED_SECRET", "FEED_PASS"))
     acc = {"account": name, "fetched_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
@@ -134,6 +163,7 @@ def fetch_account(name):
                            if _val("eq", d.get("eq")) not in (None, 0.0)]
     acc["positions"] = [pick(with_product(p), POS_FIELDS) for p in call("positions", "/api/v5/account/positions")
                         if _val("pos", p.get("pos")) not in (None, 0.0)]
+    with_ct_val(acc["positions"])
     acc["open_orders"] = [pick(o, ORD_FIELDS) for o in call("orders_pending", "/api/v5/trade/orders-pending")]
     algos = call("algo_conditional", "/api/v5/trade/orders-algo-pending?ordType=conditional") + \
         call("algo_oco", "/api/v5/trade/orders-algo-pending?ordType=oco") + \
