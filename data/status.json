@@ -1,59 +1,220 @@
 {
   "schema": "tradebot-status/1",
-  "generated_at": "2026-10-14T08:51:37+00:00",
+  "generated_at": "2026-10-14T08:54:26+00:00",
   "source": "github-actions-readonly-feed",
   "anna": {
     "account": "anna",
-    "fetched_at": "2026-10-14T08:51:36+00:00",
-    "ok": false,
-    "errors": {
-      "balance": {
-        "code": "401",
-        "msg": "HTTP 401"
+    "fetched_at": "2026-10-14T08:54:23+00:00",
+    "ok": true,
+    "errors": {},
+    "totalEqUsd": 48.31099463155971,
+    "balances": [
+      {
+        "ccy": "SUI",
+        "eq": 38.084654,
+        "eqUsd": 40.1526507122,
+        "availBal": 38.084654,
+        "availEq": 38.084654,
+        "upl": 0.0
       },
-      "positions": {
-        "code": "401",
-        "msg": "HTTP 401"
-      },
-      "orders_pending": {
-        "code": "401",
-        "msg": "HTTP 401"
-      },
-      "algo_conditional": {
-        "code": "401",
-        "msg": "HTTP 401"
-      },
-      "algo_oco": {
-        "code": "401",
-        "msg": "HTTP 401"
-      },
-      "fills": {
-        "code": "401",
-        "msg": "HTTP 401"
+      {
+        "ccy": "USDC",
+        "eq": 8.15834391935971,
+        "eqUsd": 8.15834391935971,
+        "availBal": 8.15834391935971,
+        "availEq": 8.15834391935971,
+        "upl": 0.0
       }
-    },
-    "totalEqUsd": null,
-    "balances": [],
+    ],
     "positions": [],
     "open_orders": [],
     "algo_orders": [],
-    "recent_fills": []
+    "recent_fills": [
+      {
+        "instId": "SUI-USDC",
+        "side": "buy",
+        "fillPx": 1.0497,
+        "fillSz": 7.865,
+        "fee": -0.007865,
+        "feeCcy": "SUI",
+        "execType": "T",
+        "ts": 1791917574688.0
+      },
+      {
+        "instId": "SUI-USDC",
+        "side": "buy",
+        "fillPx": 1.0497,
+        "fillSz": 11.188,
+        "fee": -0.011188,
+        "feeCcy": "SUI",
+        "execType": "T",
+        "ts": 1791917574688.0
+      },
+      {
+        "instId": "SUI-USDC",
+        "side": "buy",
+        "fillPx": 1.0488,
+        "fillSz": 19.069,
+        "fee": -0.019069,
+        "feeCcy": "SUI",
+        "execType": "T",
+        "ts": 1791911778238.0
+      },
+      {
+        "instId": "SUI-USDC",
+        "side": "sell",
+        "fillPx": 1.0551,
+        "fillSz": 38.185,
+        "fee": -0.0402889935,
+        "feeCcy": "USDC",
+        "execType": "T",
+        "ts": 1791901509070.0
+      },
+      {
+        "instId": "SUI-USDC",
+        "side": "buy",
+        "fillPx": 1.0407,
+        "fillSz": 19.217,
+        "fee": -0.019217,
+        "feeCcy": "SUI",
+        "execType": "T",
+        "ts": 1791895552419.0
+      },
+      {
+        "instId": "SUI-USDC",
+        "side": "buy",
+        "fillPx": 1.0522,
+        "fillSz": 19.007,
+        "fee": -0.019007,
+        "feeCcy": "SUI",
+        "execType": "T",
+        "ts": 1791886400836.0
+      }
+    ]
   },
   "lena": {
     "account": "lena",
-    "ok": false,
-    "errors": {
-      "feed": {
-        "code": "MISSING",
-        "msg": "ingen feed"
+    "fetched_at": "2026-10-14T08:54:24+00:00",
+    "ok": true,
+    "errors": {},
+    "totalEqUsd": 50.23267499677741,
+    "balances": [
+      {
+        "ccy": "USDC",
+        "eq": 50.23229564063741,
+        "eqUsd": 50.23229564063741,
+        "availBal": 32.746945640637406,
+        "availEq": 32.746945640637406,
+        "upl": 0.1427999999999956
+      },
+      {
+        "ccy": "INJ",
+        "eq": 4.66e-05,
+        "eqUsd": 0.0003778328,
+        "availBal": 4.66e-05,
+        "availEq": 4.66e-05,
+        "upl": 0.0
+      },
+      {
+        "ccy": "PEPE",
+        "eq": 0.364,
+        "eqUsd": 1.52334e-06,
+        "availBal": 0.364,
+        "availEq": 0.364,
+        "upl": 0.0
       }
-    },
-    "totalEqUsd": null,
-    "balances": [],
-    "positions": [],
+    ],
+    "positions": [
+      {
+        "instId": "XRP-USD_UM_XPERP-310404",
+        "instType": "FUTURES",
+        "mgnMode": "cross",
+        "posSide": "net",
+        "pos": 51.0,
+        "avgPx": 1.3686,
+        "markPx": 1.3714,
+        "upl": 0.1427999999999956,
+        "uplRatio": 0.0081835452287002,
+        "lever": 4.0,
+        "liqPx": 0.3945411196060934,
+        "margin": null,
+        "cTime": 1791921173752.0,
+        "uTime": 1791964800746.0
+      }
+    ],
     "open_orders": [],
     "algo_orders": [],
-    "recent_fills": [],
-    "fetched_at": null
+    "recent_fills": [
+      {
+        "instId": "XRP-USD_UM_XPERP-310404",
+        "side": "buy",
+        "fillPx": 1.3686,
+        "fillSz": 51.0,
+        "fee": -0.0348993,
+        "feeCcy": "USDC",
+        "execType": "T",
+        "ts": 1791921173752.0
+      },
+      {
+        "instId": "INJ-USDC",
+        "side": "sell",
+        "fillPx": 7.801,
+        "fillSz": 2.2511,
+        "fee": -0.0175608311,
+        "feeCcy": "USDC",
+        "execType": "T",
+        "ts": 1791901434092.0
+      },
+      {
+        "instId": "PEPE-USDC",
+        "side": "sell",
+        "fillPx": 4.2e-06,
+        "fillSz": 993187.0,
+        "fee": -0.0041713854,
+        "feeCcy": "USDC",
+        "execType": "T",
+        "ts": 1791901426006.0
+      },
+      {
+        "instId": "PEPE-USDC",
+        "side": "sell",
+        "fillPx": 4.2e-06,
+        "fillSz": 3198253.0,
+        "fee": -0.0134326626,
+        "feeCcy": "USDC",
+        "execType": "T",
+        "ts": 1791901426005.0
+      },
+      {
+        "instId": "INJ-USDC",
+        "side": "buy",
+        "fillPx": 7.766,
+        "fillSz": 2.2534,
+        "fee": -0.0022534,
+        "feeCcy": "INJ",
+        "execType": "T",
+        "ts": 1791898142131.0
+      },
+      {
+        "instId": "PEPE-USDC",
+        "side": "buy",
+        "fillPx": 4.171e-06,
+        "fillSz": 145636.0,
+        "fee": -145.636,
+        "feeCcy": "PEPE",
+        "execType": "T",
+        "ts": 1791898137335.0
+      },
+      {
+        "instId": "PEPE-USDC",
+        "side": "buy",
+        "fillPx": 4.171e-06,
+        "fillSz": 4050000.0,
+        "fee": -4050.0,
+        "feeCcy": "PEPE",
+        "execType": "T",
+        "ts": 1791898137335.0
+      }
+    ]
   }
 }
