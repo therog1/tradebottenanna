@@ -114,3 +114,18 @@ def size_contracts(
         "limited_by": limited_by,
         "reason": "OK",
     }
+
+
+def choose_leverage_and_size(spec, entry_price, stop_price, risk_budget_usd, margin_budget_usd, min_leverage, max_leverage):
+    """Lowest whole leverage in [min_leverage..max_leverage] at which the margin cap no longer
+    shrinks the risk-based size. Per-trade risk is unchanged; leverage only frees margin.
+    Falls back to max_leverage (best possible) if margin still limits there."""
+    lo, hi = int(min_leverage), int(max_leverage)
+    if lo < 1 or hi < lo:
+        return {"valid": False, "reason": f"Bad leverage range {lo}..{hi}"}, lo
+    last = None
+    for lev in range(lo, hi + 1):
+        last = size_contracts(spec, entry_price, stop_price, risk_budget_usd, margin_budget_usd=margin_budget_usd, leverage=lev)
+        if last["valid"] and last["limited_by"] == "risk":
+            return last, lev
+    return last, hi

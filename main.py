@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Optional
 from trading.config import BotConfig, load_strategy_config
 from trading.okx_client import OKXClient, OKXError
 from trading.reconcile import reconcile
-from trading.sizing import D, InstrumentSpec, round_price, size_contracts
+from trading.sizing import D, InstrumentSpec, round_price, size_contracts, choose_leverage_and_size
 from trading.strategy import StrategyEngine
 from trading.instruments import resolve_symbol
 
@@ -128,7 +128,8 @@ def run_bot_cycle(config: BotConfig, client: Optional[OKXClient] = None, dry_run
 
     strategy = StrategyEngine(config.strategy)
     bar = BAR_MAP.get(config.strategy.timeframe, "1H")
-    leverage = D(min(config.strategy.max_leverage, 10))
+    max_lev = min(config.strategy.max_leverage, 10)
+    min_lev = min(config.strategy.min_leverage, max_lev)
     results: List[Dict[str, Any]] = []
     orders_sent = 0
 
@@ -191,7 +192,9 @@ def run_bot_cycle(config: BotConfig, client: Optional[OKXClient] = None, dry_run
 
         budget = min(per_trade_cap, total_cap - open_risk)
         margin_budget = equity * D(config.strategy.max_margin_fraction) - used_margin
-        sizing = size_contracts(spec, last, sl, budget, margin_budget_usd=max(margin_budget, Decimal(0)), leverage=leverage)
+        sizing, lev_int = choose_leverage_and_size(spec, last, sl, budget, max(margin_budget, Decimal(0)), min_lev, max_lev)
+        leverage = D(lev_int)
+        sizing["leverage"] = lev_int
         row["sizing"] = {k: (str(v) if isinstance(v, Decimal) else v) for k, v in sizing.items()}
         if not sizing["valid"]:
             row["reason"] = sizing["reason"]
