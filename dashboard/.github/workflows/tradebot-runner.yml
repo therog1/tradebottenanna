@@ -1,0 +1,34 @@
+name: Tradebot Dashboard Telemetry (READ-ONLY, manuell)
+
+# Ägarskap: Lena = OKX_AGGR_*, Anna = OKX_ANNA_*. Dashboarden/runnern LÄSER bara.
+# Inget schema. Inga OKX-secrets. Lägger aldrig ordrar.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tradebot-dashboard-telemetry
+  cancel-in-progress: false
+
+jobs:
+  telemetry:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install
+        run: npm ci || npm install
+      - name: Build status (utan nycklar => allt "okänt")
+        run: npx tsx scripts/run_trading_cycle.ts
+      - name: Upload status as artifact (ingen commit/push)
+        uses: actions/upload-artifact@v4
+        with:
+          name: status
+          path: dashboard/public/data/status.json
