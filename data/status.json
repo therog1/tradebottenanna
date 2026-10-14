@@ -1,18 +1,18 @@
 {
-  "schema": "tradebot-status/1",
-  "generated_at": "2026-10-14T08:54:26+00:00",
+  "schema": "tradebot-status/2",
+  "generated_at": "2026-10-14T11:02:22+00:00",
   "source": "github-actions-readonly-feed",
   "anna": {
     "account": "anna",
-    "fetched_at": "2026-10-14T08:54:23+00:00",
+    "fetched_at": "2026-10-14T11:02:17+00:00",
     "ok": true,
     "errors": {},
-    "totalEqUsd": 48.31099463155971,
+    "totalEqUsd": 48.10533749995971,
     "balances": [
       {
         "ccy": "SUI",
         "eq": 38.084654,
-        "eqUsd": 40.1526507122,
+        "eqUsd": 39.9469935806,
         "availBal": 38.084654,
         "availEq": 38.084654,
         "upl": 0.0
@@ -90,27 +90,102 @@
         "execType": "T",
         "ts": 1791886400836.0
       }
-    ]
+    ],
+    "recent_orders": [
+      {
+        "instType": "SPOT",
+        "instId": "SUI-USDC",
+        "ordType": "market",
+        "side": "buy",
+        "sz": 20.0,
+        "accFillSz": 19.053,
+        "avgPx": 1.0497,
+        "state": "filled",
+        "cTime": 1791917574688.0,
+        "uTime": 1791917574688.0
+      },
+      {
+        "instType": "SPOT",
+        "instId": "SUI-USDC",
+        "ordType": "market",
+        "side": "buy",
+        "sz": 20.0,
+        "accFillSz": 19.069,
+        "avgPx": 1.0488,
+        "state": "filled",
+        "cTime": 1791911778237.0,
+        "uTime": 1791911778238.0
+      },
+      {
+        "instType": "SPOT",
+        "instId": "SUI-USDC",
+        "ordType": "market",
+        "side": "sell",
+        "sz": 38.185,
+        "accFillSz": 38.185,
+        "avgPx": 1.0551,
+        "state": "filled",
+        "cTime": 1791901509070.0,
+        "uTime": 1791901509070.0
+      },
+      {
+        "instType": "SPOT",
+        "instId": "SUI-USDC",
+        "ordType": "market",
+        "side": "buy",
+        "sz": 20.0,
+        "accFillSz": 19.217,
+        "avgPx": 1.0407,
+        "state": "filled",
+        "cTime": 1791895552418.0,
+        "uTime": 1791895552419.0
+      },
+      {
+        "instType": "SPOT",
+        "instId": "SUI-USDC",
+        "ordType": "market",
+        "side": "buy",
+        "sz": 20.0,
+        "accFillSz": 19.007,
+        "avgPx": 1.0522,
+        "state": "filled",
+        "cTime": 1791886400836.0,
+        "uTime": 1791886400836.0
+      },
+      {
+        "instType": "SPOT",
+        "instId": "SOL-USDC",
+        "ordType": "limit",
+        "side": "buy",
+        "sz": 0.01,
+        "accFillSz": 0.0,
+        "avgPx": null,
+        "state": "canceled",
+        "cTime": 1791885747946.0,
+        "uTime": 1791885748119.0
+      }
+    ],
+    "last_order_at": "2026-10-13T18:52:54+00:00"
   },
   "lena": {
     "account": "lena",
-    "fetched_at": "2026-10-14T08:54:24+00:00",
+    "fetched_at": "2026-10-14T11:02:19+00:00",
     "ok": true,
     "errors": {},
-    "totalEqUsd": 50.23267499677741,
+    "totalEqUsd": 50.18676678935341,
     "balances": [
       {
         "ccy": "USDC",
-        "eq": 50.23229564063741,
-        "eqUsd": 50.23229564063741,
-        "availBal": 32.746945640637406,
-        "availEq": 32.746945640637406,
-        "upl": 0.1427999999999956
+        "eq": 50.186395640637414,
+        "eqUsd": 50.186395640637414,
+        "availBal": 32.71252064063742,
+        "availEq": 32.712520640637415,
+        "upl": 0.0969000000000007
       },
       {
         "ccy": "INJ",
         "eq": 4.66e-05,
-        "eqUsd": 0.0003778328,
+        "eqUsd": 0.0003696312,
         "availBal": 4.66e-05,
         "availEq": 4.66e-05,
         "upl": 0.0
@@ -118,7 +193,7 @@
       {
         "ccy": "PEPE",
         "eq": 0.364,
-        "eqUsd": 1.52334e-06,
+        "eqUsd": 1.517516e-06,
         "availBal": 0.364,
         "availEq": 0.364,
         "upl": 0.0
@@ -132,9 +207,9 @@
         "posSide": "net",
         "pos": 51.0,
         "avgPx": 1.3686,
-        "markPx": 1.3714,
-        "upl": 0.1427999999999956,
-        "uplRatio": 0.0081835452287002,
+        "markPx": 1.3705,
+        "upl": 0.0969000000000007,
+        "uplRatio": 0.0055531199766188,
         "lever": 4.0,
         "liqPx": 0.3945411196060934,
         "margin": null,
@@ -215,6 +290,86 @@
         "execType": "T",
         "ts": 1791898137335.0
       }
-    ]
+    ],
+    "recent_orders": [
+      {
+        "instType": "FUTURES",
+        "instId": "XRP-USD_UM_XPERP-310404",
+        "ordType": "market",
+        "side": "buy",
+        "sz": 51.0,
+        "accFillSz": 51.0,
+        "avgPx": 1.3686,
+        "state": "filled",
+        "cTime": 1791921173751.0,
+        "uTime": 1791921173752.0
+      },
+      {
+        "instType": "SPOT",
+        "instId": "INJ-USDC",
+        "ordType": "market",
+        "side": "sell",
+        "sz": 2.2511,
+        "accFillSz": 2.2511,
+        "avgPx": 7.801,
+        "state": "filled",
+        "cTime": 1791901434092.0,
+        "uTime": 1791901434092.0
+      },
+      {
+        "instType": "SPOT",
+        "instId": "PEPE-USDC",
+        "ordType": "market",
+        "side": "sell",
+        "sz": 4191440.0,
+        "accFillSz": 4191440.0,
+        "avgPx": 4.2e-06,
+        "state": "filled",
+        "cTime": 1791901426005.0,
+        "uTime": 1791901426006.0
+      },
+      {
+        "instType": "SPOT",
+        "instId": "INJ-USDC",
+        "ordType": "market",
+        "side": "buy",
+        "sz": 17.5,
+        "accFillSz": 2.2534,
+        "avgPx": 7.766,
+        "state": "filled",
+        "cTime": 1791898142131.0,
+        "uTime": 1791898142131.0
+      },
+      {
+        "instType": "SPOT",
+        "instId": "PEPE-USDC",
+        "ordType": "market",
+        "side": "buy",
+        "sz": 17.5,
+        "accFillSz": 4195636.0,
+        "avgPx": 4.171e-06,
+        "state": "filled",
+        "cTime": 1791898137334.0,
+        "uTime": 1791898137335.0
+      }
+    ],
+    "last_order_at": "2026-10-13T19:52:53+00:00"
+  },
+  "health": {
+    "last_attempt": "2026-10-14T11:02:22+00:00",
+    "accounts": {
+      "anna": {
+        "ok": true,
+        "last_success": "2026-10-14T11:02:22+00:00",
+        "error": null
+      },
+      "lena": {
+        "ok": true,
+        "last_success": "2026-10-14T11:02:22+00:00",
+        "error": null
+      }
+    },
+    "feed_ok": true,
+    "last_success": "2026-10-14T11:02:22+00:00"
   }
 }
