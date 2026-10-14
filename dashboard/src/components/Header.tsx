@@ -37,11 +37,18 @@ export const Header: React.FC<HeaderProps> = ({
                 Tradebot Command Center
               </h1>
               <span className="text-xs px-2 py-0.5 rounded-full font-mono bg-cyan-950 text-cyan-300 border border-cyan-800/60">
-                v2.2
+                {__BUILD_ID__}
               </span>
             </div>
             <p className="text-xs text-slate-400">
               OKX Gateway • Anna (Swing) & Aggressiva Lena (Scalper)
+            </p>
+            <p className="text-[11px] text-slate-400" data-testid="last-updated">
+              {okxBalanceData?.generatedAt
+                ? `Senast uppdaterad ${String(okxBalanceData.generatedAt).slice(11, 16)} UTC (${Math.max(0, Math.round((Date.now() - Date.parse(okxBalanceData.generatedAt)) / 60000))} min sedan)${okxBalanceData.stale ? ' – inaktuell' : ''}`
+                : 'Senast uppdaterad: okänt'}
+              {okxBalanceData?.anna?.lastOrderAt ? ` · Anna senaste order ${String(okxBalanceData.anna.lastOrderAt).slice(5, 16).replace('T', ' ')}` : ''}
+              {okxBalanceData?.lena?.lastOrderAt ? ` · Lena senaste order ${String(okxBalanceData.lena.lastOrderAt).slice(5, 16).replace('T', ' ')}` : ''}
             </p>
           </div>
         </div>

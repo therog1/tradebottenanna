@@ -232,6 +232,9 @@ function apiServerPlugin(): Plugin {
 export default defineConfig(() => {
   return {
     base: '/tradebottenanna/',
+    define: {
+      __BUILD_ID__: JSON.stringify(`v2.3 · ${process.env.BUILD_SHA || 'dev'} · ${new Date().toISOString().slice(0, 16)}Z`),
+    },
     plugins: [react(), tailwindcss(), apiServerPlugin()],
     resolve: {
       alias: {

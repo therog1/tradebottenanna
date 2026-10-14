@@ -12,6 +12,7 @@ export interface FeedAccountView {
   errors: string[];
   openOrders: number;
   algoOrders: number;
+  lastOrderAt?: string;
 }
 
 export interface FeedView {
@@ -21,6 +22,8 @@ export interface FeedView {
   lena: FeedAccountView;
   totalEquityUSD?: number;
   positions: Position[];
+  updatedAt?: string;
+  feedOk?: boolean;
 }
 
 const accView = (a: any, fresh: boolean): FeedAccountView => ({
@@ -30,7 +33,13 @@ const accView = (a: any, fresh: boolean): FeedAccountView => ({
   errors: a?.errors && typeof a.errors === 'object' ? Object.keys(a.errors).map(k => `${k}: ${a.errors[k]?.code ?? ''}`) : [],
   openOrders: Array.isArray(a?.open_orders) ? a.open_orders.length : 0,
   algoOrders: Array.isArray(a?.algo_orders) ? a.algo_orders.length : 0,
+  lastOrderAt: typeof a?.last_order_at === 'string' ? a.last_order_at : undefined,
 });
+
+const isFresh = (iso?: string) => {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(t) && Date.now() - t < STALE_MINUTES * 60_000;
+};
 
 const toPositions = (a: any, bot: Position['bot']): Position[] =>
   (Array.isArray(a?.positions) ? a.positions : []).map((p: any, i: number) => {
@@ -55,21 +64,25 @@ const toPositions = (a: any, bot: Position['bot']): Position[] =>
 
 export async function loadStatusFeed(): Promise<FeedView | null> {
   try {
-    const res = await fetch(`./data/status.json?t=${Date.now()}`, { cache: 'no-store' });
+    const url = `${import.meta.env.BASE_URL}data/status.json?t=${Date.now()}`;
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) return null;
     const d = await res.json();
-    const gen = typeof d?.generated_at === 'string' ? Date.parse(d.generated_at) : NaN;
-    const fresh = Number.isFinite(gen) && Date.now() - gen < STALE_MINUTES * 60_000;
-    const anna = accView(d?.anna, fresh);
-    const lena = accView(d?.lena, fresh);
+    const annaFresh = isFresh(d?.anna?.fetched_at);
+    const lenaFresh = isFresh(d?.lena?.fetched_at);
+    const anna = accView(d?.anna, annaFresh);
+    const lena = accView(d?.lena, lenaFresh);
     const total = anna.totalEquityUSD !== undefined && lena.totalEquityUSD !== undefined
       ? anna.totalEquityUSD + lena.totalEquityUSD : undefined;
+    const updatedAt = [anna.ok ? d?.anna?.fetched_at : undefined, lena.ok ? d?.lena?.fetched_at : undefined, d?.health?.last_success]
+      .filter((x): x is string => typeof x === 'string').sort().pop();
     return {
-      generatedAt: d?.generated_at, stale: !fresh, anna, lena, totalEquityUSD: total,
-      positions: fresh ? [
-        ...(d?.anna?.ok ? toPositions(d.anna, 'Tradebotten Anna') : []),
-        ...(d?.lena?.ok ? toPositions(d.lena, 'Aggressiva Lena') : []),
-      ] : [],
+      generatedAt: d?.generated_at, stale: !(annaFresh || lenaFresh), anna, lena, totalEquityUSD: total,
+      updatedAt, feedOk: d?.health?.feed_ok,
+      positions: [
+        ...(anna.ok ? toPositions(d.anna, 'Tradebotten Anna') : []),
+        ...(lena.ok ? toPositions(d.lena, 'Aggressiva Lena') : []),
+      ],
     };
   } catch {
     return null;

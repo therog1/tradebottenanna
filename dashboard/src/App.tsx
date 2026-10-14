@@ -86,9 +86,10 @@ export default function App() {
               connected: !feed.stale && (feed.anna.ok || feed.lena.ok),
               isDemo: false,
               totalEquityUSD: feed.totalEquityUSD,
-              anna: { totalEquityUSD: feed.anna.totalEquityUSD, errors: feed.anna.errors },
-              lena: { totalEquityUSD: feed.lena.totalEquityUSD, errors: feed.lena.errors },
-              generatedAt: feed.generatedAt,
+              anna: { totalEquityUSD: feed.anna.totalEquityUSD, errors: feed.anna.errors, lastOrderAt: feed.anna.lastOrderAt },
+              lena: { totalEquityUSD: feed.lena.totalEquityUSD, errors: feed.lena.errors, lastOrderAt: feed.lena.lastOrderAt },
+              generatedAt: feed.updatedAt ?? feed.generatedAt,
+              feedOk: feed.feedOk,
               stale: feed.stale,
               source: 'STATUS_FEED_READ_ONLY'
             });
@@ -144,6 +145,8 @@ export default function App() {
 
     fetchLiveOKX();
     fetchLiveFlows();
+    const iv = setInterval(fetchLiveOKX, 5 * 60 * 1000); // läs feeden igen var 5:e min
+    return () => clearInterval(iv);
   }, []);
 
   const [isRefreshingFlows, setIsRefreshingFlows] = useState(false);
