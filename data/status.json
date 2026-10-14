@@ -1,0 +1,59 @@
+{
+  "schema": "tradebot-status/1",
+  "generated_at": "2026-10-14T08:51:37+00:00",
+  "source": "github-actions-readonly-feed",
+  "anna": {
+    "account": "anna",
+    "fetched_at": "2026-10-14T08:51:36+00:00",
+    "ok": false,
+    "errors": {
+      "balance": {
+        "code": "401",
+        "msg": "HTTP 401"
+      },
+      "positions": {
+        "code": "401",
+        "msg": "HTTP 401"
+      },
+      "orders_pending": {
+        "code": "401",
+        "msg": "HTTP 401"
+      },
+      "algo_conditional": {
+        "code": "401",
+        "msg": "HTTP 401"
+      },
+      "algo_oco": {
+        "code": "401",
+        "msg": "HTTP 401"
+      },
+      "fills": {
+        "code": "401",
+        "msg": "HTTP 401"
+      }
+    },
+    "totalEqUsd": null,
+    "balances": [],
+    "positions": [],
+    "open_orders": [],
+    "algo_orders": [],
+    "recent_fills": []
+  },
+  "lena": {
+    "account": "lena",
+    "ok": false,
+    "errors": {
+      "feed": {
+        "code": "MISSING",
+        "msg": "ingen feed"
+      }
+    },
+    "totalEqUsd": null,
+    "balances": [],
+    "positions": [],
+    "open_orders": [],
+    "algo_orders": [],
+    "recent_fills": [],
+    "fetched_at": null
+  }
+}
