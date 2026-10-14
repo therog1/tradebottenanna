@@ -190,7 +190,9 @@ def run_bot_cycle(config: BotConfig, client: Optional[OKXClient] = None, dry_run
             open_count += 1
             row.update({"action": signal["action"], "reason": "order sent with attached SL"})
         else:
-            row["reason"] = "order rejected/blocked"
+            r = resp.get("response") or {}
+            s_codes = [(d.get("sCode"), d.get("sMsg")) for d in (r.get("data") or []) if isinstance(d, dict)]
+            row["reason"] = f"order rejected: code={r.get('code')} msg={r.get('msg')} sCodes={s_codes}"
             logger.error(f"{symbol}: order not accepted: {resp}")
 
     return {

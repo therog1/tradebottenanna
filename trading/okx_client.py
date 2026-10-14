@@ -98,7 +98,13 @@ class OKXClient:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
-            return {"code": str(e.code), "msg": f"HTTP {e.code}: {e.reason}", "data": []}
+            try:
+                err = json.loads(e.read().decode("utf-8"))
+            except Exception:
+                err = {}
+            # keep OKX's own error code/msg (e.g. 50113, 51000); never contains credentials
+            return {"code": str(err.get("code") or e.code), "msg": f"HTTP {e.code}: {err.get('msg') or e.reason}",
+                    "data": err.get("data") or []}
         except Exception as e:  # network, JSON, timeout
             return {"code": "-1", "msg": f"Network/parse error: {e}", "data": []}
 
