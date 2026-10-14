@@ -54,7 +54,8 @@ function apiServerPlugin(): Plugin {
               return { balance: bData, orders: hData };
             };
 
-            const annaPass = (process.env.OKX_AGGR_PASS || process.env.OKX_ANNA_PASS || '').trim();
+            // Ägarskap: Anna = OKX_ANNA_* enbart (ingen fallback till Lenas AGGR-passphrase). Endast läsande GET-anrop.
+            const annaPass = (process.env.OKX_ANNA_PASS || '').trim();
             const [annaRes, lenaRes] = await Promise.all([
               queryAccount(process.env.OKX_ANNA_KEY || '', process.env.OKX_ANNA_SECRET || '', annaPass),
               queryAccount(process.env.OKX_AGGR_KEY || '', process.env.OKX_AGGR_SECRET || '', (process.env.OKX_AGGR_PASS || '').trim())
@@ -225,7 +226,7 @@ function apiServerPlugin(): Plugin {
           }
         }
 
-        // 6. POST /api/ai/apply
+        // 6. POST /api/ai/apply  — SKAPAR ENDAST ETT FÖRSLAG. Skriver aldrig till GitHub/main eller live-config.
         if (url === '/api/ai/apply' && req.method === 'POST') {
           try {
             let bodyStr = '';
@@ -233,43 +234,20 @@ function apiServerPlugin(): Plugin {
             await new Promise(r => req.on('end', r));
             const body = JSON.parse(bodyStr || '{}');
             const { botSlug, proposedParams } = body;
-
-            const token = process.env.GITHUB_KEY;
-            if (token && botSlug === 'anna') {
-              // Update strategy.json on GitHub
-              const getRes = await fetch('https://api.github.com/repos/therog1/tradebottenanna/contents/strategy.json', {
-                headers: { 'Authorization': `Bearer ${token}`, 'User-Agent': 'AIStudio-Optimizer' }
-              });
-              const getData = await getRes.json();
-              if (getData.sha) {
-                const currentStrategy = JSON.parse(Buffer.from(getData.content, 'base64').toString('utf-8'));
-                currentStrategy.strategy.risk_per_trade_pct = proposedParams.risk_per_trade_pct || currentStrategy.strategy.risk_per_trade_pct;
-                currentStrategy.strategy.min_score = proposedParams.min_score || currentStrategy.strategy.min_score;
-                currentStrategy.metadata.last_updated = new Date().toISOString();
-                currentStrategy.metadata.notes = 'AI Optimering applicerad via Tradebot Command Center.';
-
-                const newBase64 = Buffer.from(JSON.stringify(currentStrategy, null, 2)).toString('base64');
-                await fetch('https://api.github.com/repos/therog1/tradebottenanna/contents/strategy.json', {
-                  method: 'PUT',
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'User-Agent': 'AIStudio-Optimizer',
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    message: 'Apply AI quantitative parameter optimization to TradebottenAnna',
-                    content: newBase64,
-                    sha: getData.sha,
-                    branch: 'main'
-                  })
-                });
-              }
-            }
-
+            const fs = await import('fs');
+            const pathMod = await import('path');
+            const dir = pathMod.resolve(process.cwd(), 'proposals');
+            fs.mkdirSync(dir, { recursive: true });
+            const file = pathMod.join(dir, `${new Date().toISOString().replace(/[:.]/g, '-')}-${botSlug || 'unknown'}.json`);
+            fs.writeFileSync(file, JSON.stringify({
+              status: 'FÖRSLAG – kräver Rogers godkännande via PR',
+              botSlug, proposedParams, created_at: new Date().toISOString()
+            }, null, 2), 'utf-8');
             res.setHeader('Content-Type', 'application/json');
             return res.end(JSON.stringify({
               success: true,
-              message: `AI-förslaget applicerat framgångsrikt på ${botSlug === 'anna' ? 'Tradebotten Anna' : 'Aggressiva Lena'}!`
+              proposalOnly: true,
+              message: `Förslag sparat (${pathMod.basename(file)}). Inget ändrat i live-konfiguration – öppna en PR för granskning.`
             }));
           } catch (e: any) {
             res.setHeader('Content-Type', 'application/json');
@@ -278,78 +256,11 @@ function apiServerPlugin(): Plugin {
         }
 
         // 4. POST /api/okx/balance
-        if (url === '/api/okx/balance' && req.method === 'POST') {
-          try {
-            let bodyStr = '';
-            req.on('data', c => bodyStr += c);
-            await new Promise(r => req.on('end', r));
-            const body = JSON.parse(bodyStr || '{}');
-
-            const apiKey = body.apiKey || process.env.OKX_API_KEY || '';
-            const secretKey = body.secretKey || process.env.OKX_API_SECRET || '';
-            const passphrase = body.passphrase || process.env.OKX_API_PASSPHRASE || '';
-            const isDemo = Boolean(body.isDemo);
-
-            if (!apiKey || !secretKey || !passphrase) {
-              res.setHeader('Content-Type', 'application/json');
-              return res.end(JSON.stringify({
-                connected: false,
-                error: 'Saknar OKX API-nycklar. Lägg till dina nycklar för att läsa in realtidssaldo.',
-                balances: []
-              }));
-            }
-
-            const crypto = await import('crypto');
-            const timestamp = new Date().toISOString();
-            const method = 'GET';
-            const pathStr = '/api/v5/account/balance';
-            const message = timestamp + method + pathStr;
-            const sign = crypto.createHmac('sha256', secretKey).update(message).digest('base64');
-
-            const headers: Record<string, string> = {
-              'OK-ACCESS-KEY': apiKey,
-              'OK-ACCESS-SIGN': sign,
-              'OK-ACCESS-TIMESTAMP': timestamp,
-              'OK-ACCESS-PASSPHRASE': passphrase,
-              'Content-Type': 'application/json',
-              'User-Agent': 'Tradebot-CommandCenter/2.0'
-            };
-            if (isDemo) {
-              headers['x-simulated-trading'] = '1';
-            }
-
-            const okxRes = await fetch(`https://eea.okx.com${pathStr}`, { headers });
-            const data = await okxRes.json();
-
-            res.setHeader('Content-Type', 'application/json');
-            if (data.code === '0' && data.data && data.data[0]) {
-              const account = data.data[0];
-              const totalEq = parseFloat(account.totalEq || '0');
-              const details = (account.details || []).map((d: any) => ({
-                ccy: d.ccy,
-                eq: parseFloat(d.eq || '0'),
-                availBal: parseFloat(d.availBal || '0'),
-                frozenBal: parseFloat(d.frozenBal || '0')
-              })).filter((d: any) => d.eq > 0 || d.availBal > 0);
-
-              return res.end(JSON.stringify({
-                connected: true,
-                isDemo,
-                totalEquityUSD: totalEq,
-                details
-              }));
-            } else {
-              return res.end(JSON.stringify({
-                connected: false,
-                isDemo,
-                error: data.msg || 'Kunde inte hämta saldo från OKX',
-                code: data.code
-              }));
-            }
-          } catch (e: any) {
-            res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({ connected: false, error: e.message }));
-          }
+        // /api/okx/balance borttagen: dashboarden tar aldrig emot nycklar från webbläsaren.
+        if (url === '/api/okx/balance') {
+          res.statusCode = 410;
+          res.setHeader('Content-Type', 'application/json');
+          return res.end(JSON.stringify({ connected: false, error: 'Borttagen: nycklar matas aldrig in i dashboarden. Saldon läses endast server-side (read-only).' }));
         }
 
         // 3. GET /api/diagnostics
@@ -365,32 +276,7 @@ function apiServerPlugin(): Plugin {
           }
         }
 
-        // 2. POST /api/github/trigger-workflow
-        if (url === '/api/github/trigger-workflow' && req.method === 'POST') {
-          try {
-            if (!token) throw new Error('Missing GITHUB_KEY');
-            const resp = await fetch('https://api.github.com/repos/therog1/tradebottenaggresivalena/actions/workflows/lena_scalp.yml/dispatches', {
-              method: 'POST',
-              headers: {
-                'User-Agent': 'Tradebot-Command-Center',
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/vnd.github+json',
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ ref: 'main' })
-            });
-
-            res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({
-              success: resp.status === 204 || resp.status === 200,
-              status: resp.status,
-              message: resp.status === 204 ? 'Lena GitHub Actions scalp cycle initiated!' : 'Dispatched'
-            }));
-          } catch (e: any) {
-            res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({ error: e.message }));
-          }
-        }
+        // /api/github/trigger-workflow borttagen: dashboarden får inte starta handelsworkflows.
 
         next();
       });
