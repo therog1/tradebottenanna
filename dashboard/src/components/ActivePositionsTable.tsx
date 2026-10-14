@@ -4,12 +4,10 @@ import { ArrowUpRight, ArrowDownRight, XCircle, TrendingUp, ShieldCheck } from '
 
 interface ActivePositionsTableProps {
   positions: Position[];
-  onClosePosition: (positionId: string) => void;
 }
 
 export const ActivePositionsTable: React.FC<ActivePositionsTableProps> = ({
   positions,
-  onClosePosition,
 }) => {
   if (positions.length === 0) {
     return (
@@ -37,7 +35,6 @@ export const ActivePositionsTable: React.FC<ActivePositionsTableProps> = ({
               <th className="py-3 px-4">Högsta notering</th>
               <th className="py-3 px-4">Allokerat kapital</th>
               <th className="py-3 px-4 text-right">Orealiserad PnL</th>
-              <th className="py-3 px-4 text-center">Åtgärd</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60">
@@ -103,16 +100,6 @@ export const ActivePositionsTable: React.FC<ActivePositionsTableProps> = ({
                     </div>
                   </td>
 
-                  <td className="py-3 px-4 text-center whitespace-nowrap">
-                    <button
-                      onClick={() => onClosePosition(pos.id)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-950/80 text-rose-300 border border-rose-800/80 hover:bg-rose-900 transition"
-                      title="Stäng positionen till rådande marknadspris och spara i historiken"
-                    >
-                      <XCircle className="w-3.5 h-3.5" />
-                      <span>Stäng vid marknad</span>
-                    </button>
-                  </td>
                 </tr>
               );
             })}

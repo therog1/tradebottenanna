@@ -1,28 +1,14 @@
 import React from 'react';
 import { fmtUsd } from '../utils/format';
-import { ShieldAlert, Github, Activity, RefreshCw, Zap, Power, Cpu } from 'lucide-react';
+import { Github, Activity, RefreshCw, Zap, Cpu } from 'lucide-react';
 
 interface HeaderProps {
-  killSwitchActive: boolean;
-  onToggleKillSwitch: () => void;
-  onPanicCloseAll: () => void;
-  onOpenGitHubModal: () => void;
-  onOpenOKXModal: () => void;
   onOpenGrokBridge?: () => void;
+  onRefresh?: () => void;
   okxBalanceData: any;
-  openPositionsCount: number;
 }
 
-export const Header: React.FC<HeaderProps> = ({
-  killSwitchActive,
-  onToggleKillSwitch,
-  onPanicCloseAll,
-  onOpenGitHubModal,
-  onOpenOKXModal,
-  onOpenGrokBridge,
-  okxBalanceData,
-  openPositionsCount,
-}) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenGrokBridge, onRefresh, okxBalanceData }) => {
   return (
     <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-30 px-4 lg:px-8 py-3">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -55,15 +41,13 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Global actions and status pills */}
         <div className="flex items-center flex-wrap gap-2.5">
-          {/* OKX Live Balance Pill / Connect Button */}
-          <button
-            onClick={onOpenOKXModal}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+          {/* Saldo (read-only, ej klickbar) */}
+          <div
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border ${
               okxBalanceData?.connected
-                ? 'bg-emerald-950/90 text-emerald-300 border-emerald-600 hover:bg-emerald-900'
-                : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'
+                ? 'bg-emerald-950/90 text-emerald-300 border-emerald-600'
+                : 'bg-slate-900 text-slate-300 border-slate-800'
             }`}
-            title="Klicka för att se OKX-kontouppgifter"
           >
             <Activity className="w-3.5 h-3.5 text-emerald-400" />
             {okxBalanceData?.connected ? (
@@ -73,17 +57,30 @@ export const Header: React.FC<HeaderProps> = ({
             ) : (
               <span>Saldo: okänt{okxBalanceData?.stale ? ' (inaktuell data)' : ''}</span>
             )}
-          </button>
+          </div>
 
-          {/* GitHub Sync Status */}
-          <button
-            onClick={onOpenGitHubModal}
+          {/* Uppdatera (läser status.json igen) */}
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition"
+              title="Läs data/status.json igen"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
+              <span>Uppdatera</span>
+            </button>
+          )}
+
+          {/* Extern länk till GitHub */}
+          <a
+            href="https://github.com/therog1/tradebottenanna"
+            target="_blank"
+            rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition"
           >
             <Github className="w-3.5 h-3.5 text-slate-400" />
             <span>GitHub (therog1)</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          </button>
+          </a>
 
           {/* Grok Handover Bridge Button */}
           {onOpenGrokBridge && (
@@ -97,30 +94,6 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* Emergency Kill Switch */}
-          <button
-            onClick={onToggleKillSwitch}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition border ${
-              killSwitchActive
-                ? 'bg-red-950/80 text-red-300 border-red-700 hover:bg-red-900'
-                : 'bg-slate-900 text-slate-300 border-slate-800 hover:text-red-400 hover:border-red-900/60'
-            }`}
-          >
-            <Power className={`w-3.5 h-3.5 ${killSwitchActive ? 'text-red-400 animate-pulse' : 'text-slate-400'}`} />
-            <span>{killSwitchActive ? 'KILL-SWITCH AKTIV' : 'Kill-Switch'}</span>
-          </button>
-
-          {/* Panic Close All Button */}
-          {openPositionsCount > 0 && (
-            <button
-              onClick={onPanicCloseAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white transition shadow-sm"
-              title="Stäng alla öppna positioner till marknadspris omedelbart"
-            >
-              <ShieldAlert className="w-3.5 h-3.5" />
-              <span>Nödstäng alla ({openPositionsCount})</span>
-            </button>
-          )}
         </div>
       </div>
     </header>

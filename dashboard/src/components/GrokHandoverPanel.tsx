@@ -83,8 +83,8 @@ Som ansvarig chef måste du upprätthålla strikt finansiell integritet:
 =========================================
 4. LENAS RISK- OCH ORDERBOKSKONTROLLER
 =========================================
-1. Risk per trade (35%):
-   - Betyder att 35% av subkontots USDC-likviditet allokeras som säkerhet per trade (räkneexempel: 17.50 av 50 USD), INTE 35% total risk till noll.
+1. Risk per trade (1 %, tak 3 % totalt – godkänt av Roger, införs via säkerhets-PR #1):
+   - Storlek räknas från SL-avståndet; 35 % är endast tak för marginal per trade, INTE 35% total risk till noll.
    - Maximalt 3 öppna positioner parallellt (hindrar överexponering).
 2. Hävstång:
    - 3x till 5x dynamisk hävstång beroende på orderbokens obalans (OBI-styrka).
@@ -104,7 +104,7 @@ Som ansvarig chef måste du upprätthålla strikt finansiell integritet:
 När användaren ställer frågor, ber om analyser eller vill modifiera systemet ska du agera med auktoritet:
 1. Analysera alltid de faktiska filerna och API-anropen innan du ger svar.
 2. Föreslå konkreta, testbara parameterjusteringar med förväntad Sharpe-effekt och drawdown-risk.
-3. Vid incidenter eller marknadsstorm: Aktivera Kill-Switch och bekräfta börsens faktiska läge.
+3. Vid incidenter eller marknadsstorm: stäng av workflowet i GitHub Actions och bekräfta börsens faktiska läge.
 4. Behåll befintlig svensk terminologi i Command Center (Hävstång, Orderboksobalans, Skarpt Saldo).
 
 Bekräfta att du har tagit emot denna instruktion, sammanfatta systemets status och ange dina första tre prioriterade åtgärder som chef över Tradebot Command Center.`;
@@ -181,14 +181,6 @@ git remote add origin https://github.com/therog1/tradebottenanna.git
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 w-full lg:w-auto">
-            <a
-              href="/tradebottenanna-v2.3-export.zip"
-              download="tradebottenanna-v2.3-export.zip"
-              className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/25 transition transform active:scale-95"
-            >
-              <Download className="w-4 h-4" />
-              <span>Ladda ner Källkod (.ZIP)</span>
-            </a>
             <button
               onClick={handleCopy}
               className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white shadow-lg shadow-indigo-500/25 transition transform active:scale-95"
@@ -293,14 +285,6 @@ git remote add origin https://github.com/therog1/tradebottenanna.git
                 </div>
               </div>
 
-              <a
-                href="/tradebottenanna-v2.3-export.zip"
-                download="tradebottenanna-v2.3-export.zip"
-                className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition shadow-lg shadow-emerald-500/25 shrink-0"
-              >
-                <Download className="w-4 h-4 text-slate-950" />
-                <span>Ladda ner ZIP (~96.5 KB)</span>
-              </a>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800 text-xs font-mono">
@@ -471,8 +455,8 @@ git remote add origin https://github.com/therog1/tradebottenanna.git
                 <span className="text-amber-400 font-bold">3x–5x Dynamisk (Futures)</span>
               </div>
               <div className="flex justify-between text-slate-400">
-                <span>Allokering per trade:</span>
-                <span className="text-slate-200">35% (räkneexempel)</span>
+                <span>Risk per trade:</span>
+                <span className="text-slate-200">1 % (tak 3 % totalt) – säkerhets-PR #1, ej mergad</span>
               </div>
               <div className="flex justify-between text-slate-400">
                 <span>Subkonto Saldo:</span>
@@ -560,7 +544,7 @@ git remote add origin https://github.com/therog1/tradebottenanna.git
                 4. Nödstopp & Kill-Switch
               </span>
               <p className="text-slate-400 leading-relaxed">
-                Vid manuell aktivering av Kill-Switch spärras alla triggers på GitHub Actions och orderplaceringar avbryts. Panic Close stänger alla öppna positioner och bekräftar exchange-fills innan status markeras stängd.
+                Nödstopp görs i GitHub (Actions → Disable workflow) eller med filen KILL_SWITCH i Lena-repot (säkerhets-PR #1). Dashboarden kan inte stoppa, stänga eller lägga ordrar.
               </p>
             </div>
           </div>

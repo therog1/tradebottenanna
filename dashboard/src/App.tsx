@@ -4,12 +4,6 @@ import { OverviewStats } from './components/OverviewStats';
 import { BotCardsSection } from './components/BotCardsSection';
 import { TradesHistoryTable } from './components/TradesHistoryTable';
 import { ActivePositionsTable } from './components/ActivePositionsTable';
-import { OrderBookScanner } from './components/OrderBookScanner';
-import { SettingsModal } from './components/SettingsModal';
-import { GitHubModal } from './components/GitHubModal';
-import { BotCycleModal } from './components/BotCycleModal';
-import { DiagnosticPanel } from './components/DiagnosticPanel';
-import { OKXConnectModal } from './components/OKXConnectModal';
 import { loadStatusFeed } from './services/statusFeed';
 import { TradingStore } from './services/tradingStore';
 import { Trade, Position, BotConfig, MarketFlow } from './types';
@@ -31,7 +25,7 @@ import {
 import { GrokHandoverPanel } from './components/GrokHandoverPanel';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'HISTORY' | 'POSITIONS' | 'SCANNER' | 'DIAGNOSTICS' | 'GROK_BRIDGE'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'HISTORY' | 'POSITIONS' | 'GROK_BRIDGE'>('OVERVIEW');
 
   // Core Trading State
   const [bots, setBots] = useState<BotConfig[]>(() => TradingStore.getBots());
@@ -146,7 +140,8 @@ export default function App() {
     fetchLiveOKX();
     fetchLiveFlows();
     const iv = setInterval(fetchLiveOKX, 5 * 60 * 1000); // läs feeden igen var 5:e min
-    return () => clearInterval(iv);
+    window.addEventListener('tb-refresh', fetchLiveOKX);
+    return () => { clearInterval(iv); window.removeEventListener('tb-refresh', fetchLiveOKX); };
   }, []);
 
   const [isRefreshingFlows, setIsRefreshingFlows] = useState(false);
@@ -292,14 +287,9 @@ export default function App() {
 
       {/* Header */}
       <Header
-        killSwitchActive={killSwitchActive}
-        onToggleKillSwitch={handleToggleKillSwitch}
-        onPanicCloseAll={handlePanicCloseAll}
-        onOpenGitHubModal={() => setIsGitHubModalOpen(true)}
-        onOpenOKXModal={() => setIsOKXModalOpen(true)}
         onOpenGrokBridge={() => setActiveTab('GROK_BRIDGE')}
+        onRefresh={() => { window.dispatchEvent(new Event('tb-refresh')); }}
         okxBalanceData={okxBalanceData}
-        openPositionsCount={positions.length}
       />
 
       {/* Main Container */}
@@ -350,30 +340,7 @@ export default function App() {
             )}
           </button>
 
-          <button
-            onClick={() => setActiveTab('SCANNER')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
-              activeTab === 'SCANNER'
-                ? 'bg-slate-800 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
-            }`}
-          >
-            <Flame className="w-4 h-4 text-rose-400" />
-            <span>Orderboksanalys (Lena OBI)</span>
-          </button>
 
-          <button
-            onClick={() => setActiveTab('DIAGNOSTICS')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
-              activeTab === 'DIAGNOSTICS'
-                ? 'bg-slate-800 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
-            }`}
-          >
-            <Wrench className="w-4 h-4 text-emerald-400" />
-            <span>Hälsokontroll & Självläkning</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          </button>
 
 
           <button
@@ -411,15 +378,10 @@ export default function App() {
                   Aktiva Trading-motorer
                 </h2>
                 <span className="text-xs text-slate-500">
-                  Kopplade till OKX & GitHub (therog1)
+                  Read-only – ingen styrning från dashboarden
                 </span>
               </div>
-              <BotCardsSection
-                bots={bots}
-                onRunBotCycle={slug => setCycleModalSlug(slug)}
-                onOpenSettings={bot => setSettingsBot(bot)}
-                isTriggeringWorkflow={isTriggeringWorkflow}
-              />
+              <BotCardsSection bots={bots} />
             </div>
 
             {/* Active Positions Summary */}
@@ -439,17 +401,9 @@ export default function App() {
               </div>
               <ActivePositionsTable
                 positions={positions}
-                onClosePosition={handleClosePosition}
               />
             </div>
 
-            {/* Order Book Flow Scanner Preview */}
-            <OrderBookScanner
-              flows={flows}
-              onSimulateScalp={handleSimulateScalp}
-              onRefreshFlows={handleRefreshFlows}
-              isRefreshing={isRefreshingFlows}
-            />
           </div>
         )}
 
@@ -471,35 +425,17 @@ export default function App() {
               <div>
                 <h3 className="text-base font-bold text-slate-100">Öppna positioner</h3>
                 <p className="text-xs text-slate-400">
-                  Stäng enstaka positioner manuellt eller övervaka flytande vinst/förlust.
+                  Positioner enligt read-only-feeden från OKX (data/status.json). Ingen styrning härifrån.
                 </p>
               </div>
             </div>
             <ActivePositionsTable
               positions={positions}
-              onClosePosition={handleClosePosition}
             />
           </div>
         )}
 
-        {/* TAB 4: SCANNER */}
-        {activeTab === 'SCANNER' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <OrderBookScanner
-              flows={flows}
-              onSimulateScalp={handleSimulateScalp}
-              onRefreshFlows={handleRefreshFlows}
-              isRefreshing={isRefreshingFlows}
-            />
-          </div>
-        )}
 
-        {/* TAB 5: DIAGNOSTICS & SELF-HEALING */}
-        {activeTab === 'DIAGNOSTICS' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <DiagnosticPanel />
-          </div>
-        )}
 
         {/* TAB 7: GROK COMMAND BRIDGE (HANDOVER & LEADERSHIP) */}
         {activeTab === 'GROK_BRIDGE' && (
@@ -516,44 +452,10 @@ export default function App() {
 
       {/* Footer */}
       <footer className="border-t border-slate-900 bg-slate-950 py-4 px-4 text-center text-xs text-slate-600">
-        Tradebot Command Center • Anna (Swing) & Aggressiva Lena (Scalper) • Google AI Studio • GitHub therog1
+        Tradebot Command Center • read-only • data från status-feed (endast GET mot OKX) • GitHub therog1
       </footer>
 
       {/* Modals */}
-      <SettingsModal
-        bot={settingsBot}
-        isOpen={Boolean(settingsBot)}
-        onClose={() => setSettingsBot(null)}
-        onSave={handleSaveSettings}
-      />
-
-      <GitHubModal
-        isOpen={isGitHubModalOpen}
-        onClose={() => setIsGitHubModalOpen(false)}
-        isTriggering={isTriggeringWorkflow}
-      />
-
-      <OKXConnectModal
-        isOpen={isOKXModalOpen}
-        onClose={() => setIsOKXModalOpen(false)}
-        onBalanceUpdated={data => {
-          setOkxBalanceData(data);
-          if (data) {
-            showToast('Saldo uppdaterat (read-only).');
-          }
-        }}
-      />
-
-      <BotCycleModal
-        botSlug={cycleModalSlug}
-        isOpen={Boolean(cycleModalSlug)}
-        onClose={() => setCycleModalSlug(null)}
-        bot={bots.find(b => b.slug === cycleModalSlug)}
-        onPositionCreated={pos => {
-          setPositions(p => [pos, ...p]);
-          TradingStore.savePositions([pos, ...positions]);
-        }}
-      />
     </div>
   );
 }

@@ -122,10 +122,10 @@ export const OverviewStats: React.FC<OverviewStatsProps> = ({
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           <span className="font-semibold text-slate-200">
-            Skarpt OKX Status:
+            Datakälla:
           </span>
           <span className="text-slate-400">
-            Inga demo- eller låtsaspengar visas. All data är 100% kopplad till dina riktiga konton.
+            Read-only-feed från OKX (endast GET) via GitHub Actions, data/status.json. Okända värden visas som okänt.
           </span>
         </div>
         <div className="flex items-center gap-4 text-slate-300 font-mono text-[11px]">
