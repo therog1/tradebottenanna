@@ -1,0 +1,66 @@
+name: Status feed (read-only)
+
+# Endast läsande OKX GET-anrop (saldo, positioner, öppna ordrar, SL/TP-algo-ordrar, senaste fills).
+# Inga order-/trade-endpoints, inga AI-anrop. Skriver sanerad data/status.json till gh-pages.
+# Schema: var 30:e minut (sparar Actions-minuter). Lena-data hämtas från Lena-repots publika feed-branch.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '7,37 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: status-feed
+  cancel-in-progress: false
+
+jobs:
+  feed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout script (main)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: src
+          persist-credentials: false
+
+      - name: Fetch Anna (read-only GET)
+        env:
+          # Anna = OKX_ANNA_* ; i detta repo finns i dag bara OKX_API_* (Annas nyckel) som fallback.
+          FEED_KEY: ${{ secrets.OKX_ANNA_KEY || secrets.OKX_API_KEY }}
+          FEED_SECRET: ${{ secrets.OKX_ANNA_SECRET || secrets.OKX_API_SECRET }}
+          FEED_PASS: ${{ secrets.OKX_ANNA_PASS || secrets.OKX_API_PASSPHRASE }}
+        run: |
+          for v in FEED_KEY FEED_SECRET FEED_PASS; do
+            val="${!v}"; [ -n "$val" ] && echo "::add-mask::$val"
+          done
+          python3 src/scripts/status_feed.py fetch --account anna --out out/anna.json
+
+      - name: Fetch Lena feed (public, already sanitized)
+        run: |
+          curl -fsS --max-time 15 -o out/lena.json \
+            https://raw.githubusercontent.com/therog1/tradebottenaggresivalena/status-feed/data/lena.json \
+            || echo "Lena-feed saknas"
+
+      - name: Merge + re-sanitize (allowlist)
+        run: python3 src/scripts/status_feed.py merge --anna out/anna.json --lena out/lena.json --out out/status.json
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: site
+
+      - name: Publish data/status.json (endast denna fil)
+        run: |
+          mkdir -p site/data
+          cp out/status.json site/data/status.json
+          cd site
+          git config user.name "status-feed-bot"
+          git config user.email "status-feed-bot@users.noreply.github.com"
+          git add data/status.json
+          git diff --staged --quiet || git commit -q -m "status-feed: uppdatera data/status.json (read-only)"
+          git push -q origin gh-pages
