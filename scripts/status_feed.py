@@ -17,6 +17,7 @@ ALLOWED_GET = {
     "/api/v5/trade/orders-pending",
     "/api/v5/trade/orders-algo-pending?ordType=conditional",
     "/api/v5/trade/orders-algo-pending?ordType=oco",
+    "/api/v5/trade/orders-algo-pending?ordType=move_order_stop",
     "/api/v5/trade/fills?limit=20",
     "/api/v5/trade/orders-history?instType=SPOT&limit=20",
     "/api/v5/trade/orders-history?instType=FUTURES&limit=20",
@@ -25,7 +26,25 @@ ALLOWED_GET = {
 HIST_FIELDS = ["instType", "instId", "ordType", "side", "sz", "accFillSz", "avgPx", "state", "cTime", "uTime"]
 BAL_FIELDS = ["ccy", "eq", "eqUsd", "availBal", "availEq", "upl"]
 POS_FIELDS = ["instId", "instType", "mgnMode", "posSide", "pos", "avgPx", "markPx", "upl", "uplRatio",
-              "lever", "liqPx", "margin", "cTime", "uTime"]
+              "lever", "liqPx", "margin", "cTime", "uTime", "product", "is_perp"]
+
+
+def classify(inst_id, inst_type):
+    """X-Perp = OKX USD-M 'perpetual-style' future (instFamily *_XPERP, alias this_five_years,
+    futureSettlement=false). Verifierat mot /public/instruments 2026-10-14."""
+    iid = str(inst_id or "")
+    if "_XPERP" in iid:
+        return "X-Perp", True
+    if inst_type == "SWAP":
+        return "Perp", True
+    if inst_type == "FUTURES":
+        return "Future", False
+    return str(inst_type or "okänt"), False
+
+
+def with_product(p):
+    prod, perp = classify(p.get("instId"), p.get("instType"))
+    return {**p, "product": prod, "is_perp": perp}
 ORD_FIELDS = ["instType", "instId", "ordType", "side", "sz", "px", "state", "accFillSz", "cTime"]
 ALGO_FIELDS = ["instId", "ordType", "side", "sz", "slTriggerPx", "tpTriggerPx", "state", "cTime"]
 FILL_FIELDS = ["instId", "side", "fillPx", "fillSz", "fee", "feeCcy", "execType", "ts"]
@@ -35,6 +54,8 @@ STRINGY = re.compile(r"^[A-Za-z0-9_\-\.]{0,40}$")
 
 
 def _val(k, v):
+    if isinstance(v, bool):
+        return v
     if v in (None, ""):
         return None
     if k in NUMERIC:
@@ -111,11 +132,12 @@ def fetch_account(name):
         acc["totalEqUsd"] = _val("totalEq", bal[0].get("totalEq"))
         acc["balances"] = [pick(d, BAL_FIELDS) for d in bal[0].get("details", [])
                            if _val("eq", d.get("eq")) not in (None, 0.0)]
-    acc["positions"] = [pick(p, POS_FIELDS) for p in call("positions", "/api/v5/account/positions")
+    acc["positions"] = [pick(with_product(p), POS_FIELDS) for p in call("positions", "/api/v5/account/positions")
                         if _val("pos", p.get("pos")) not in (None, 0.0)]
     acc["open_orders"] = [pick(o, ORD_FIELDS) for o in call("orders_pending", "/api/v5/trade/orders-pending")]
     algos = call("algo_conditional", "/api/v5/trade/orders-algo-pending?ordType=conditional") + \
-        call("algo_oco", "/api/v5/trade/orders-algo-pending?ordType=oco")
+        call("algo_oco", "/api/v5/trade/orders-algo-pending?ordType=oco") + \
+        call("algo_trail", "/api/v5/trade/orders-algo-pending?ordType=move_order_stop")
     acc["algo_orders"] = [pick(a, ALGO_FIELDS) for a in algos]
     acc["recent_fills"] = [pick(f, FILL_FIELDS) for f in call("fills", "/api/v5/trade/fills?limit=20")][:20]
     hist = []
@@ -148,7 +170,8 @@ def resanitize(acc, name):
     fa = _iso(acc.get("fetched_at"))
     return {"account": name, "fetched_at": fa, "ok": bool(acc.get("ok")), "errors": errs,
             "totalEqUsd": _val("totalEq", acc.get("totalEqUsd")),
-            "balances": lst("balances", BAL_FIELDS), "positions": lst("positions", POS_FIELDS),
+            "balances": lst("balances", BAL_FIELDS),
+            "positions": [pick(with_product(p), POS_FIELDS) for p in lst("positions", POS_FIELDS)],
             "open_orders": lst("open_orders", ORD_FIELDS), "algo_orders": lst("algo_orders", ALGO_FIELDS),
             "recent_fills": lst("recent_fills", FILL_FIELDS), "recent_orders": lst("recent_orders", HIST_FIELDS),
             "last_order_at": _iso(acc.get("last_order_at"))}

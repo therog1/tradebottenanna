@@ -1,0 +1,24 @@
+name: Status feed cron (trigger)
+
+# Reservtrigger: status-feed.yml:s eget schema har inte körts en enda gång.
+# Startar bara status-feed.yml via workflow_dispatch. Inga secrets, inga OKX-anrop.
+on:
+  schedule:
+    - cron: '26,56 * * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+concurrency:
+  group: status-feed-cron
+  cancel-in-progress: true
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: gh workflow run status-feed.yml -R "$GITHUB_REPOSITORY" --ref main
+        env:
+          GH_TOKEN: ${{ github.token }}
