@@ -265,48 +265,6 @@ git remote add origin https://github.com/therog1/tradebottenanna.git
       {/* TAB: EXPORT TILL KODAREN & GITHUB SETUP */}
       {activeSubTab === 'EXPORT_KODAREN' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          {/* Main Download Card */}
-          <div className="p-6 rounded-2xl bg-gradient-to-r from-emerald-950/60 via-slate-900 to-indigo-950/60 border border-emerald-600/40 shadow-xl space-y-4">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-3.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300">
-                  <FolderArchive className="w-8 h-8" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-bold text-white">tradebottenanna-v2.3-export.zip</h3>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      REDO FÖR GITHUB
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-300 mt-1 max-w-xl">
-                    Komplett källkodspaket (ursprungligen exporterat från AI Studio, nu utan AI-beroenden). Innehåller React-dashboarden, Lena & Anna kvantitativa modeller, färdiga GitHub Actions-arbetsflöden och "noll nycklar i webbläsaren"-arkitektur.
-                  </p>
-                </div>
-              </div>
-
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800 text-xs font-mono">
-              <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
-                <span className="text-slate-500 block text-[10px]">TOTAL STORLEK</span>
-                <span className="text-emerald-400 font-bold">96.5 KB (36 filer)</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
-                <span className="text-slate-500 block text-[10px]">KLIENT (PAGES)</span>
-                <span className="text-slate-200 font-bold">100% Statisk & Gratis</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
-                <span className="text-slate-500 block text-[10px]">HANDELSMOTOR</span>
-                <span className="text-indigo-400 font-bold">GitHub Actions Cron</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
-                <span className="text-slate-500 block text-[10px]">SÄKERHETSMODELL</span>
-                <span className="text-amber-400 font-bold">0 Nycklar i Webbläsare</span>
-              </div>
-            </div>
-          </div>
-
           {/* Security Guarantee Box */}
           <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
             <div className="flex items-center gap-2">

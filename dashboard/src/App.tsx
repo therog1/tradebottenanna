@@ -32,7 +32,6 @@ export default function App() {
   const [trades, setTrades] = useState<Trade[]>(() => TradingStore.getTrades());
   const [positions, setPositions] = useState<Position[]>(() => TradingStore.getPositions());
   const [flows, setFlows] = useState<MarketFlow[]>(() => TradingStore.getFlows());
-  const [killSwitchActive, setKillSwitchActive] = useState(false);
 
   // Modals & Triggers
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
@@ -160,40 +159,6 @@ export default function App() {
     } finally {
       setIsRefreshingFlows(false);
     }
-  };
-
-  // 1. Close a single position
-  const handleClosePosition = (positionId: string) => {
-    try {
-      const { closedTrade, updatedPositions, updatedTrades } = TradingStore.closePosition(positionId);
-      setPositions(updatedPositions);
-      setTrades(updatedTrades);
-      showToast(`Position stängd! Realiserad PnL: ${closedTrade.realized_pnl >= 0 ? '+' : ''}$${closedTrade.realized_pnl} sparad i historiken.`);
-    } catch (err: any) {
-      showToast(err.message);
-    }
-  };
-
-  // 2. Panic Close All
-  const handlePanicCloseAll = () => {
-    const { closedCount, updatedTrades } = TradingStore.panicCloseAll();
-    setPositions([]);
-    setTrades(updatedTrades);
-    showToast(`Nödstängning utförd: ${closedCount} positioner stängdes och registrerades i orderhistoriken.`);
-  };
-
-  // 3. Toggle Kill Switch
-  const handleToggleKillSwitch = () => {
-    setKillSwitchActive(prev => {
-      const nextState = !prev;
-      setBots(currentBots => {
-        const updated = currentBots.map(b => ({ ...b, kill_switch: nextState }));
-        TradingStore.saveBots(updated);
-        return updated;
-      });
-      showToast(nextState ? '⚠️ Kill-Switch AKTIVERAD! Nya ordrar blockeras.' : '✅ Kill-Switch avaktiverad.');
-      return nextState;
-    });
   };
 
   // 4. Save Bot Strategy Settings
@@ -375,7 +340,7 @@ export default function App() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider text-[11px]">
-                  Aktiva Trading-motorer
+                  Trading-motorer
                 </h2>
                 <span className="text-xs text-slate-500">
                   Read-only – ingen styrning från dashboarden

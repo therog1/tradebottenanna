@@ -51,16 +51,20 @@ export const OverviewStats: React.FC<OverviewStatsProps> = ({
         {/* 2. Secured / Realized Profits */}
         <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between text-xs font-medium text-slate-400">
-            <span>Säkrade vinster (Stängda)</span>
+            <span>Realiserad PnL (stängda)</span>
             <DollarSign className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="mt-2 flex items-baseline gap-1.5 font-mono">
-            <span className={`text-2xl font-bold tracking-tight ${totalRealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {totalRealizedPnl >= 0 ? '+' : ''}${totalRealizedPnl.toFixed(2)}
-            </span>
+            {trades.length > 0 ? (
+              <span className={`text-2xl font-bold tracking-tight ${totalRealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {totalRealizedPnl >= 0 ? '+' : ''}${totalRealizedPnl.toFixed(2)}
+              </span>
+            ) : (
+              <span className="text-2xl font-bold tracking-tight text-slate-400">okänt</span>
+            )}
           </div>
           <div className="mt-1 text-xs text-slate-400">
-            <span>{trades.length} genomförda ordrar på OKX</span>
+            <span>{trades.length > 0 ? `${trades.length} stängda affärer i feeden` : 'Ingen stängd-affär-data i feeden'}</span>
           </div>
         </div>
 
