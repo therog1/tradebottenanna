@@ -60,6 +60,8 @@ const toPositions = (a: any, bot: Position['bot']): Position[] =>
       allocated_usd: num(p.margin) ?? 0,
       unrealized_pnl: num(p.upl) ?? 0,
       pnl_pct: (num(p.uplRatio) ?? 0) * 100,
+      leverage: num(p.lever) ?? undefined,
+      margin_mode: p.mgnMode ? String(p.mgnMode) : undefined,
       opened_at: num(p.cTime) ? new Date(num(p.cTime)!).toISOString() : '',
     } as Position;
   });
