@@ -238,3 +238,99 @@ def test_kill_switch_and_disabled_send_nothing():
     fake = FakeOKX()
     run_bot_cycle(c, client=fake, dry_run=False)
     assert fake.orders == []
+
+
+# ------------------------------------------------ Lena-style FUTURES (XPERP)
+import main as main_mod
+from trading.instruments import resolve_symbol, pick_contract, is_full_inst_id
+
+XPERP = {"instId": "BTC-USD_UM_XPERP-310404", "instFamily": "BTC-USD_UM_XPERP", "ctVal": "0.0001", "lotSz": "1",
+         "minSz": "1", "tickSz": "0.1", "ctType": "linear", "settleCcy": "USD", "state": "live", "expTime": "1933056000000"}
+
+
+@pytest.fixture(autouse=True)
+def _no_sleep(monkeypatch):
+    monkeypatch.setattr(main_mod, "SLEEP", lambda s: None)
+
+
+def xcfg(**kw):
+    c = cfg(symbols=("BTC-USD_UM_XPERP",), **kw)
+    return c
+
+
+def test_resolve_family_to_live_contract():
+    fake = FakeOKX(instruments={"x": XPERP})
+    assert resolve_symbol(fake, "BTC-USD_UM_XPERP", now_ms=1_792_000_000_000) == "BTC-USD_UM_XPERP-310404"
+    assert is_full_inst_id("BTC-USD_UM_XPERP-310404") and is_full_inst_id("BTC-USDT-SWAP")
+
+
+def test_pick_contract_skips_expiring_and_suspended():
+    now = 1_000_000_000_000
+    insts = [{"instId": "A-1", "state": "live", "expTime": str(now + 86_400_000)},
+             {"instId": "A-2", "state": "suspend", "expTime": str(now + 30 * 86_400_000)},
+             {"instId": "A-3", "state": "live", "expTime": str(now + 60 * 86_400_000)},
+             {"instId": "A-4", "state": "live", "expTime": str(now + 20 * 86_400_000)}]
+    assert pick_contract(insts, now) == "A-4"
+    with pytest.raises(ValueError):
+        pick_contract(insts[:2], now)
+
+
+def test_xperp_order_like_lena():
+    fake = FakeOKX(instruments={"BTC-USD_UM_XPERP-310404": XPERP})
+    out = run_bot_cycle(xcfg(), client=fake, dry_run=False)
+    assert out["status"] == "success" and out["orders_sent"] == 1
+    o = fake.orders[0]
+    assert o["inst_id"] == "BTC-USD_UM_XPERP-310404"
+    assert fake.leverage_calls == [("BTC-USD_UM_XPERP-310404", "3", "cross")]
+    ct = Decimal(o["size_contracts"])
+    assert ct == ct.to_integral_value()  # lotSz 1
+    risk = abs(Decimal(fake.last) - Decimal(o["sl_trigger_px"])) * ct * Decimal("0.0001")
+    assert risk <= Decimal("10")
+    assert out["results"][0]["sl_verified"] is True and fake.standalone_sl == []
+
+
+def test_missing_attached_sl_triggers_standalone_sl():
+    fake = FakeOKX(instruments={"BTC-USD_UM_XPERP-310404": XPERP})
+    fake.attach_sl_appears = False
+    out = run_bot_cycle(xcfg(), client=fake, dry_run=False)
+    assert len(fake.standalone_sl) == 1 and fake.standalone_sl[0][1] == "sell"
+    assert out["status"] == "success"
+
+
+def test_no_sl_at_all_raises_alert():
+    fake = FakeOKX(instruments={"BTC-USD_UM_XPERP-310404": XPERP})
+    fake.attach_sl_appears = False
+    fake.fallback_ok = False
+    out = run_bot_cycle(xcfg(), client=fake, dry_run=False)
+    assert out["status"] == "alert" and any("NO_EXCHANGE_SL" in a for a in out["alerts"])
+
+
+def test_unverified_fill_raises_alert():
+    fake = FakeOKX(instruments={"BTC-USD_UM_XPERP-310404": XPERP})
+    fake.fill_state = "live"
+    out = run_bot_cycle(xcfg(), client=fake, dry_run=False)
+    assert out["status"] == "alert"
+
+
+def test_set_leverage_failure_means_no_order():
+    fake = FakeOKX(instruments={"BTC-USD_UM_XPERP-310404": XPERP})
+    fake.lev_ok = False
+    out = run_bot_cycle(xcfg(), client=fake, dry_run=False)
+    assert fake.orders == [] and "set-leverage" in out["results"][0]["reason"]
+
+
+def test_payload_has_posside_net_and_attach_id():
+    c = OKXClient(api_key="k", secret_key="s", passphrase="p", trading_enabled=True)
+    with mock.patch.object(OKXClient, "_http", return_value={"code": "0", "data": [{"sCode": "0"}]}) as h:
+        c.place_order(inst_id="BTC-USD_UM_XPERP-310404", side="sell", size_contracts="4", sl_trigger_px="83000",
+                      client_order_id="anna1")
+    body = json.loads(h.call_args[0][2])
+    assert body["posSide"] == "net" and body["tdMode"] == "cross"
+    assert body["attachAlgoOrds"][0]["attachAlgoClOrdId"] == "anna1sl"
+
+
+def test_futures_instrument_lookup_uses_futures_type():
+    c = OKXClient()
+    with mock.patch.object(OKXClient, "_get", return_value=[XPERP]) as g:
+        c.get_instrument("BTC-USD_UM_XPERP-310404")
+    assert g.call_args[0][1]["instType"] == "FUTURES"

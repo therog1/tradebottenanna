@@ -32,6 +32,12 @@ class FakeOKX:
         self.last = last
         self.orders = []
         self.calls = []
+        self.leverage_calls = []
+        self.standalone_sl = []
+        self.fill_state = "filled"
+        self.lev_ok = True
+        self.fallback_ok = True
+        self.attach_sl_appears = True
 
     def _chk(self, name):
         self.calls.append(name)
@@ -66,8 +72,30 @@ class FakeOKX:
     def get_ticker(self, inst_id):
         self._chk("ticker"); return {"last": self.last}
 
+    def get_instruments_by_family(self, fam, inst_type="FUTURES"):
+        self._chk("family")
+        return [i for i in self.instruments.values() if i.get("instFamily") == fam]
+
+    def set_leverage(self, inst_id, lever, mgn_mode="cross"):
+        self._chk("set_leverage")
+        self.leverage_calls.append((inst_id, lever, mgn_mode))
+        return {"success": self.lev_ok, "response": {"code": "0" if self.lev_ok else "51000", "msg": ""}}
+
+    def get_order(self, inst_id, cl_ord_id):
+        self._chk("get_order")
+        return {"state": self.fill_state, "accFillSz": self.orders[-1]["size_contracts"] if self.fill_state == "filled" else "0"}
+
+    def place_stop_loss(self, inst_id, close_side, size_contracts, sl_trigger_px, td_mode="cross"):
+        self._chk("place_stop_loss")
+        self.standalone_sl.append((inst_id, close_side, size_contracts, sl_trigger_px))
+        if self.fallback_ok:
+            self.algos.append({"instId": inst_id, "slTriggerPx": sl_trigger_px, "ordType": "conditional"})
+        return {"success": self.fallback_ok}
+
     def place_order(self, **kw):
         self._chk("place_order")
         assert self.trading_enabled, "engine tried to send while trading disabled"
         self.orders.append(kw)
+        if self.attach_sl_appears:
+            self.algos.append({"instId": kw["inst_id"], "slTriggerPx": kw["sl_trigger_px"], "ordType": "oco"})
         return {"success": True, "response": {"code": "0", "data": [{"sCode": "0"}]}}

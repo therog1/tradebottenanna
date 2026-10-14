@@ -133,7 +133,12 @@ class OKXClient:
             raise OKXError(f"Ticker {inst_id} empty")
         return data[0]
 
-    def get_instrument(self, inst_id: str, inst_type: str = "SWAP") -> Dict[str, Any]:
+    def get_instruments_by_family(self, inst_family: str, inst_type: str = "FUTURES") -> List[Dict[str, Any]]:
+        return self._get("/api/v5/public/instruments", {"instType": inst_type, "instFamily": inst_family}, private=False)
+
+    def get_instrument(self, inst_id: str, inst_type: Optional[str] = None) -> Dict[str, Any]:
+        if inst_type is None:
+            inst_type = "SWAP" if inst_id.endswith("-SWAP") else "FUTURES"
         data = self._get("/api/v5/public/instruments", {"instType": inst_type, "instId": inst_id}, private=False)
         if not data:
             raise OKXError(f"Instrument {inst_id} not found")
@@ -152,14 +157,51 @@ class OKXClient:
             raise OKXError("Account config response empty")
         return data[0]
 
-    def get_positions(self, inst_type: str = "SWAP") -> List[Dict[str, Any]]:
-        return self._get("/api/v5/account/positions", {"instType": inst_type})
+    # inst_type=None reads ALL instrument types so total open risk is complete.
+    def get_positions(self, inst_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        return self._get("/api/v5/account/positions", {"instType": inst_type} if inst_type else None)
 
-    def get_pending_orders(self, inst_type: str = "SWAP") -> List[Dict[str, Any]]:
-        return self._get("/api/v5/trade/orders-pending", {"instType": inst_type})
+    def get_pending_orders(self, inst_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        return self._get("/api/v5/trade/orders-pending", {"instType": inst_type} if inst_type else None)
 
-    def get_pending_algo_orders(self, ord_type: str = "conditional", inst_type: str = "SWAP") -> List[Dict[str, Any]]:
-        return self._get("/api/v5/trade/orders-algo-pending", {"ordType": ord_type, "instType": inst_type})
+    def get_pending_algo_orders(self, ord_type: str = "conditional", inst_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        params = {"ordType": ord_type}
+        if inst_type:
+            params["instType"] = inst_type
+        return self._get("/api/v5/trade/orders-algo-pending", params)
+
+    def get_order(self, inst_id: str, cl_ord_id: str) -> Dict[str, Any]:
+        data = self._get("/api/v5/trade/order", {"instId": inst_id, "clOrdId": cl_ord_id})
+        if not data:
+            raise OKXError(f"Order {cl_ord_id} not found")
+        return data[0]
+
+    def _post(self, path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        if not self.trading_enabled:
+            return {"success": False, "blocked": True, "error": "TRADING_DISABLED"}
+        if not self.has_credentials:
+            return {"success": False, "blocked": True, "error": "MISSING_CREDENTIALS"}
+        resp = self._http("POST", path, json.dumps(payload))
+        ok = isinstance(resp, dict) and str(resp.get("code")) == "0"
+        if ok:
+            for d in resp.get("data") or []:
+                if str(d.get("sCode", "0")) != "0":
+                    ok = False
+        return {"success": ok, "request": payload, "response": resp}
+
+    def set_leverage(self, inst_id: str, lever: str, mgn_mode: str = "cross") -> Dict[str, Any]:
+        """Same as Lena: set leverage for the instrument before entry."""
+        return self._post("/api/v5/account/set-leverage", {"instId": inst_id, "lever": str(lever), "mgnMode": mgn_mode})
+
+    def place_stop_loss(self, inst_id: str, close_side: str, size_contracts: str, sl_trigger_px: str,
+                        td_mode: str = "cross") -> Dict[str, Any]:
+        """Standalone reduce-only SL (fallback when attachAlgoOrds did not materialise)."""
+        if not sl_trigger_px or float(sl_trigger_px) <= 0:
+            return {"success": False, "blocked": True, "error": "NO_STOP_LOSS"}
+        return self._post("/api/v5/trade/order-algo", {
+            "instId": inst_id, "tdMode": td_mode, "side": close_side, "posSide": "net", "sz": str(size_contracts),
+            "ordType": "conditional", "reduceOnly": True,
+            "slTriggerPx": str(sl_trigger_px), "slOrdPx": "-1", "slTriggerPxType": "last"})
 
     # ------------------------------------------------------------------ write
     def place_order(
@@ -193,10 +235,12 @@ class OKXClient:
             "side": side,
             "ordType": "market",
             "sz": str(size_contracts),
+            "posSide": "net",
             "attachAlgoOrds": [algo],
         }
         if client_order_id:
             payload["clOrdId"] = client_order_id
+            algo["attachAlgoClOrdId"] = f"{client_order_id}sl"[:32]
         body = json.dumps(payload)
         resp = self._http("POST", "/api/v5/trade/order", body)
         ok = isinstance(resp, dict) and str(resp.get("code")) == "0"

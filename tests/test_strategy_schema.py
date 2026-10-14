@@ -19,7 +19,7 @@ class TestStrategySchema(unittest.TestCase):
         self.assertEqual(config.risk_limits.enforce_demo_headers, config.environment == "okx_eu_demo")
         self.assertGreater(config.strategy.risk_per_trade_pct, 0)
         self.assertLessEqual(config.strategy.max_leverage, 10)
-        self.assertIn("BTC-USDT-SWAP", config.strategy.symbols)
+        self.assertIn("BTC-USD_UM_XPERP", config.strategy.symbols)
 
     def test_reject_unsafe_risk_pct(self):
         """Reject risk per trade > 5.0%."""

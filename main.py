@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import sys
+import time
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
@@ -25,6 +26,10 @@ from trading.okx_client import OKXClient, OKXError
 from trading.reconcile import reconcile
 from trading.sizing import D, InstrumentSpec, round_price, size_contracts
 from trading.strategy import StrategyEngine
+from trading.instruments import resolve_symbol
+
+SLEEP = time.sleep  # tests replace this
+FILL_POLL_TRIES = 5
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] [TradebottenAnna] %(message)s")
 logger = logging.getLogger("TradebottenAnna")
@@ -113,9 +118,20 @@ def run_bot_cycle(config: BotConfig, client: Optional[OKXClient] = None, dry_run
     results: List[Dict[str, Any]] = []
     orders_sent = 0
 
-    for symbol in config.strategy.symbols:
-        row: Dict[str, Any] = {"symbol": symbol, "action": "SKIP"}
+    alerts: List[str] = []
+    for configured in config.strategy.symbols:
+        row: Dict[str, Any] = {"symbol": configured, "action": "SKIP"}
         results.append(row)
+        try:
+            symbol = resolve_symbol(client, configured)
+        except Exception as e:
+            row["reason"] = f"could not resolve instrument: {e}"
+            logger.warning(f"{configured}: {row['reason']}")
+            continue
+        row["instId"] = symbol
+        if alerts:
+            row["reason"] = "earlier alert in this cycle; no new entries"
+            continue
         if symbol in rec.instruments_with_position:
             row["reason"] = "position already open"
             continue
@@ -175,28 +191,83 @@ def run_bot_cycle(config: BotConfig, client: Optional[OKXClient] = None, dry_run
         if not may_send:
             row.update({"action": "DRY_RUN", "reason": "order calculated, not sent", "sl": str(sl), "tp": str(tp)})
             continue
+        lev_res = client.set_leverage(symbol, str(int(leverage)), "cross")
+        if not lev_res.get("success"):
+            r = lev_res.get("response") or {}
+            row["reason"] = f"set-leverage failed: code={r.get('code')} msg={r.get('msg') or lev_res.get('error')}"
+            logger.error(f"{symbol}: {row['reason']} -> no order")
+            continue
+        cl_id = f"anna{int(time.time() * 1000)}"
         resp = client.place_order(
             inst_id=symbol,
             side="buy" if long else "sell",
             size_contracts=sizing["contracts_str"],
             sl_trigger_px=str(sl),
             tp_trigger_px=str(tp),
+            client_order_id=cl_id,
         )
-        row["order"] = resp
-        if resp.get("success"):
-            orders_sent += 1
-            open_risk += sizing["risk_usd"]
-            used_margin += sizing["notional_usd"] / leverage
-            open_count += 1
-            row.update({"action": signal["action"], "reason": "order sent with attached SL"})
-        else:
+        row["order"] = {"request": resp.get("request"), "response": resp.get("response"), "success": resp.get("success")}
+        if not resp.get("success"):
             r = resp.get("response") or {}
             s_codes = [(d.get("sCode"), d.get("sMsg")) for d in (r.get("data") or []) if isinstance(d, dict)]
-            row["reason"] = f"order rejected: code={r.get('code')} msg={r.get('msg')} sCodes={s_codes}"
-            logger.error(f"{symbol}: order not accepted: {resp}")
+            row["reason"] = f"order rejected: code={r.get('code')} msg={r.get('msg') or resp.get('error')} sCodes={s_codes}"
+            logger.error(f"{symbol}: {row['reason']}")
+            if str(r.get("code")) in ("-1", "429"):
+                alerts.append(f"ORDER_STATE_UNKNOWN:{symbol}:{cl_id}")
+            continue
+
+        orders_sent += 1
+        open_risk += sizing["risk_usd"]
+        used_margin += sizing["notional_usd"] / leverage
+        open_count += 1
+        row.update({"action": signal["action"], "clOrdId": cl_id})
+
+        # Verify fill (an accepted order is not a position).
+        order_state, filled = "unknown", Decimal(0)
+        for _ in range(FILL_POLL_TRIES):
+            try:
+                o = client.get_order(symbol, cl_id)
+                order_state, filled = o.get("state", "unknown"), D(o.get("accFillSz") or "0")
+                if order_state in ("filled", "canceled", "mmp_canceled"):
+                    break
+            except Exception as e:
+                order_state = f"read error: {e}"
+            SLEEP(1)
+        row["fill"] = {"state": order_state, "filled": str(filled)}
+        if filled <= 0:
+            if order_state not in ("canceled", "mmp_canceled"):
+                alerts.append(f"FILL_UNVERIFIED:{symbol}:{cl_id}:{order_state}")
+            row["reason"] = f"fill not verified (state={order_state})"
+            logger.critical(f"{symbol}: {row['reason']}")
+            continue
+
+        # Verify SL exists at OKX; otherwise place standalone reduce-only SL.
+        has_sl = False
+        for _ in range(FILL_POLL_TRIES):
+            try:
+                algos = client.get_pending_algo_orders("conditional") + client.get_pending_algo_orders("oco")
+                has_sl = any(a.get("instId") == symbol and a.get("slTriggerPx") for a in algos)
+            except Exception:
+                has_sl = False
+            if has_sl:
+                break
+            SLEEP(1)
+        if not has_sl:
+            fb = client.place_stop_loss(symbol, "sell" if long else "buy", format(filled.normalize(), "f"), str(sl))
+            has_sl = bool(fb.get("success"))
+            logger.warning(f"{symbol}: attached SL not found; standalone SL placed={has_sl}")
+        row["sl_verified"] = has_sl
+        if has_sl:
+            row["reason"] = "order filled, SL verified at OKX"
+            logger.info(f"{symbol}: filled {filled} ct, SL {sl} verified at OKX")
+        else:
+            alerts.append(f"NO_EXCHANGE_SL:{symbol}")
+            row["reason"] = "FILLED WITHOUT VERIFIED SL - manual action required"
+            logger.critical(f"{symbol}: {row['reason']}")
 
     return {
-        "status": "success",
+        "status": "alert" if alerts else "success",
+        "alerts": alerts,
         "product": config.product,
         "environment": config.environment,
         "dry_run": dry_run,
