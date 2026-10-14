@@ -29,6 +29,8 @@ export interface Position {
   unrealized_pnl: number;
   pnl_pct: number;
   trailing_stop_dist_pct?: number;
+  leverage?: number;
+  margin_mode?: string;
   opened_at: string;
 }
 

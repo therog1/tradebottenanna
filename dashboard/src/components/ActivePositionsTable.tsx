@@ -30,6 +30,7 @@ export const ActivePositionsTable: React.FC<ActivePositionsTableProps> = ({
               <th className="py-3 px-4">Bot</th>
               <th className="py-3 px-4">Par / Instrument</th>
               <th className="py-3 px-4">Sida</th>
+              <th className="py-3 px-4">Hävstång</th>
               <th className="py-3 px-4">Instegspris</th>
               <th className="py-3 px-4">Aktuellt pris</th>
               <th className="py-3 px-4">Högsta notering</th>
@@ -64,6 +65,10 @@ export const ActivePositionsTable: React.FC<ActivePositionsTableProps> = ({
                     <span className="px-1.5 py-0.5 rounded font-bold bg-emerald-950 text-emerald-400">
                       {pos.side}
                     </span>
+                  </td>
+
+                  <td className="py-3 px-4 font-mono text-slate-300 whitespace-nowrap">
+                    {pos.leverage != null ? `${pos.leverage}x${pos.margin_mode ? ` ${pos.margin_mode}` : ''}` : '–'}
                   </td>
 
                   <td className="py-3 px-4 font-mono text-slate-300">
