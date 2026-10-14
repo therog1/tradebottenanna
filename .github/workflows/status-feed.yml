@@ -6,7 +6,7 @@ name: Status feed (read-only)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '7,37 * * * *'
+    - cron: '11,41 * * * *'
 
 permissions:
   contents: write
@@ -51,14 +51,14 @@ jobs:
           done
           python3 src/scripts/status_feed.py fetch --account lena --out out/lena.json
 
-      - name: Merge + re-sanitize (allowlist)
-        run: python3 src/scripts/status_feed.py merge --anna out/anna.json --lena out/lena.json --out out/status.json
-
       - name: Checkout gh-pages
         uses: actions/checkout@v4
         with:
           ref: gh-pages
           path: site
+
+      - name: Merge + re-sanitize (allowlist)
+        run: python3 src/scripts/status_feed.py merge --anna out/anna.json --lena out/lena.json --prev site/data/status.json --out out/status.json
 
       - name: Publish data/status.json (endast denna fil)
         run: |
@@ -69,4 +69,5 @@ jobs:
           git config user.email "status-feed-bot@users.noreply.github.com"
           git add data/status.json
           git diff --staged --quiet || git commit -q -m "status-feed: uppdatera data/status.json (read-only)"
+          git pull -q --rebase origin gh-pages || true
           git push -q origin gh-pages
