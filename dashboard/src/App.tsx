@@ -10,7 +10,6 @@ import { GitHubModal } from './components/GitHubModal';
 import { BotCycleModal } from './components/BotCycleModal';
 import { DiagnosticPanel } from './components/DiagnosticPanel';
 import { OKXConnectModal } from './components/OKXConnectModal';
-import { AIOptimizerPanel } from './components/AIOptimizerPanel';
 import { TradingStore } from './services/tradingStore';
 import { Trade, Position, BotConfig, MarketFlow } from './types';
 import {
@@ -31,7 +30,7 @@ import {
 import { GrokHandoverPanel } from './components/GrokHandoverPanel';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'HISTORY' | 'POSITIONS' | 'SCANNER' | 'DIAGNOSTICS' | 'AI_OPTIMIZER' | 'GROK_BRIDGE'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'HISTORY' | 'POSITIONS' | 'SCANNER' | 'DIAGNOSTICS' | 'GROK_BRIDGE'>('OVERVIEW');
 
   // Core Trading State
   const [bots, setBots] = useState<BotConfig[]>(() => TradingStore.getBots());
@@ -78,23 +77,7 @@ export default function App() {
           // Dev proxy unavailable, likely static deployment
         }
 
-        if (!data || !data.success) {
-          try {
-            const staticRes = await fetch('./data/status.json');
-            if (staticRes.ok) {
-              const staticData = await staticRes.json();
-              data = {
-                success: true,
-                combinedEquityUSD: staticData.combinedEquityUSD,
-                anna: staticData.anna,
-                lena: staticData.lena,
-                source: staticData.source || 'GITHUB_ACTIONS'
-              };
-            }
-          } catch {
-            // Keep existing defaults
-          }
-        }
+        // Ingen statisk status.json: den publicerade sidan visar inga saldon/positioner/order (okänt).
 
         if (data && data.success && typeof data.combinedEquityUSD === 'number') {
           setOkxBalanceData({
@@ -205,36 +188,6 @@ export default function App() {
       return updated;
     });
     showToast(`Parametrar för ${updatedBot.name} sparade.`);
-  };
-
-  // 4b. Apply AI Proposed Parameters
-  const handleApplyProposal = async (botSlug: 'anna' | 'lena', proposedParams: Record<string, any>) => {
-    try {
-      const res = await fetch('/api/ai/apply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ botSlug, proposedParams }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setBots(prev => {
-          const updated = prev.map(b => {
-            if (b.slug === botSlug) {
-              return { ...b, ...proposedParams };
-            }
-            return b;
-          });
-          TradingStore.saveBots(updated);
-          return updated;
-        });
-        showToast(`AI-förslag applicerat för ${botSlug === 'anna' ? 'Tradebotten Anna' : 'Aggressiva Lena'}!`);
-      } else {
-        throw new Error(data.error || 'Kunde inte applicera parametrar.');
-      }
-    } catch (err: any) {
-      showToast(`Fel: ${err.message}`);
-      throw err;
-    }
   };
 
   // Trigger av GitHub-workflows borttagen: dashboarden är read-only.
@@ -401,20 +354,6 @@ export default function App() {
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           </button>
 
-          <button
-            onClick={() => setActiveTab('AI_OPTIMIZER')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
-              activeTab === 'AI_OPTIMIZER'
-                ? 'bg-purple-900/60 text-purple-200 border border-purple-700 shadow-sm'
-                : 'text-slate-400 hover:text-purple-300 hover:bg-slate-900/50'
-            }`}
-          >
-            <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
-            <span>AI Optimering</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-purple-950 text-purple-300 border border-purple-800 font-mono">
-              NY
-            </span>
-          </button>
 
           <button
             onClick={() => setActiveTab('GROK_BRIDGE')}
@@ -538,19 +477,6 @@ export default function App() {
         {activeTab === 'DIAGNOSTICS' && (
           <div className="space-y-4 animate-in fade-in duration-200">
             <DiagnosticPanel />
-          </div>
-        )}
-
-        {/* TAB 6: AI STRATEGY OPTIMIZATION */}
-        {activeTab === 'AI_OPTIMIZER' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <AIOptimizerPanel
-              bots={bots}
-              trades={trades}
-              positions={positions}
-              marketFlows={flows}
-              onApplyProposal={handleApplyProposal}
-            />
           </div>
         )}
 

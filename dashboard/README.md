@@ -1,6 +1,6 @@
 # 🤖 Tradebot Command Center v2.3 — Kodarens Handbok & Grok Handoff
 
-Detta är den kompletta källkoden för **Tradebot Command Center** (tradebottenanna & tradebottenaggresivalena), exporterad direkt från Google AI Studio.
+Detta är källkoden för **Tradebot Command Center** (read-only). Ursprungligen exporterad från AI Studio; alla AI/LLM-anrop (Gemini) är borttagna enligt kostnadsregeln.
 
 ---
 

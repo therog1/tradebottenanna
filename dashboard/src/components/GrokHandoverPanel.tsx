@@ -47,7 +47,7 @@ Systemet består av tre sammanlänkade komponenter:
      * GET /api/github/status (synkroniseringsstatus för båda GitHub-repon)
      * POST /api/github/trigger-workflow (triggar GitHub Actions för Lena scalp)
      * GET /api/market/flows (topp 30 likvida par med realtids Order Book Imbalance från OKX)
-     * POST /api/ai/optimize & POST /api/ai/apply (parametertuning & git commit)
+     * (AI-optimering borttagen – inga AI/LLM-anrop; parameterändringar endast via PR)
      * GET /api/diagnostics (automatisk hälsokontroll)
 2. Tradebotten Anna (GitHub: therog1/tradebottenanna):
    - Profil: Konservativ kvantitativ swing- och trendföljare (1h-tidsram, SMA/EMA, ATR-mål).
@@ -63,8 +63,8 @@ Systemet består av tre sammanlänkade komponenter:
 =========================================
 - API Gateway: https://eea.okx.com (EU/EEA-godkänd nod).
 - Två separata underkonton på OKX:
-  * Anna: $OKX_ANNA_KEY, $OKX_ANNA_SECRET, $OKX_ANNA_PASS. Eget kapital: ~$48 USD.
-  * Lena: $OKX_AGGR_KEY, $OKX_AGGR_SECRET, $OKX_AGGR_PASS. Eget kapital: ~$50 USD.
+  * Anna: $OKX_ANNA_KEY, $OKX_ANNA_SECRET, $OKX_ANNA_PASS. Eget kapital: okänt.
+  * Lena: $OKX_AGGR_KEY, $OKX_AGGR_SECRET, $OKX_AGGR_PASS. Eget kapital: okänt.
 - Viktig EEA-restriktion: Inom EU/EEA tillåter OKX inte direkt handel eller belåning mot USDT utan regulatorisk godkännandeprocess. Lösningen som är driftsatt är USD-Margined X-Perpetuals (USD_UM_XPERP) där USDC hålls som ren säkerhetsmarginal (collateral) och vinst/förlust avräknas i USDC.
 
 =========================================
@@ -84,7 +84,7 @@ Som ansvarig chef måste du upprätthålla strikt finansiell integritet:
 4. LENAS RISK- OCH ORDERBOKSKONTROLLER
 =========================================
 1. Risk per trade (35%):
-   - Betyder att 35% av subkontots USDC-likviditet allokeras som säkerhet per trade (ca $17.50 på ett $50-konto), INTE 35% total risk till noll.
+   - Betyder att 35% av subkontots USDC-likviditet allokeras som säkerhet per trade (räkneexempel: 17.50 av 50 USD), INTE 35% total risk till noll.
    - Maximalt 3 öppna positioner parallellt (hindrar överexponering).
 2. Hävstång:
    - 3x till 5x dynamisk hävstång beroende på orderbokens obalans (OBI-styrka).
@@ -288,7 +288,7 @@ git remote add origin https://github.com/therog1/tradebottenanna.git
                     </span>
                   </div>
                   <p className="text-xs text-slate-300 mt-1 max-w-xl">
-                    Komplett källkodspaket exporterat från Google AI Studio. Innehåller React-dashboarden, Lena & Anna kvantitativa modeller, färdiga GitHub Actions-arbetsflöden och "noll nycklar i webbläsaren"-arkitektur.
+                    Komplett källkodspaket (ursprungligen exporterat från AI Studio, nu utan AI-beroenden). Innehåller React-dashboarden, Lena & Anna kvantitativa modeller, färdiga GitHub Actions-arbetsflöden och "noll nycklar i webbläsaren"-arkitektur.
                   </p>
                 </div>
               </div>
@@ -472,7 +472,7 @@ git remote add origin https://github.com/therog1/tradebottenanna.git
               </div>
               <div className="flex justify-between text-slate-400">
                 <span>Allokering per trade:</span>
-                <span className="text-slate-200">35% ($17.50 på $50)</span>
+                <span className="text-slate-200">35% (räkneexempel)</span>
               </div>
               <div className="flex justify-between text-slate-400">
                 <span>Subkonto Saldo:</span>

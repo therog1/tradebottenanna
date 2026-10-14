@@ -56,123 +56,12 @@ export const INITIAL_BOT_CONFIGS: BotConfig[] = [
 ];
 
 // Riktiga faktiska ordrar från OKX
-export const INITIAL_CLOSED_TRADES: Trade[] = [
-  {
-    id: 'OKX-4006169414103699456',
-    bot: 'Tradebotten Anna',
-    symbol: 'SUI-USDC',
-    side: 'BUY',
-    entry_price: 1.0407,
-    exit_price: 1.0407,
-    size_units: 19.217,
-    notional_usd: 19.999,
-    realized_pnl: 0.0,
-    pnl_pct: 0.0,
-    exit_reason: 'EXCHANGE_FILL',
-    entry_time: '2026-10-13T12:45:52Z',
-    exit_time: '2026-10-13T12:45:52Z',
-    status: 'CLOSED'
-  },
-  {
-    id: 'OKX-4005862337967788032',
-    bot: 'Tradebotten Anna',
-    symbol: 'SUI-USDC',
-    side: 'BUY',
-    entry_price: 1.0522,
-    exit_price: 1.0522,
-    size_units: 19.007,
-    notional_usd: 19.999,
-    realized_pnl: 0.0,
-    pnl_pct: 0.0,
-    exit_reason: 'EXCHANGE_FILL',
-    entry_time: '2026-10-13T10:13:20Z',
-    exit_time: '2026-10-13T10:13:20Z',
-    status: 'CLOSED'
-  },
-  {
-    id: 'OKX-4006256310453587968',
-    bot: 'Aggressiva Lena',
-    symbol: 'INJ-USDC',
-    side: 'BUY',
-    entry_price: 7.766,
-    exit_price: 7.766,
-    size_units: 2.251,
-    notional_usd: 17.50,
-    realized_pnl: 0.0,
-    pnl_pct: 0.0,
-    exit_reason: 'EXCHANGE_FILL',
-    entry_time: '2026-10-13T13:29:02Z',
-    exit_time: '2026-10-13T13:29:02Z',
-    status: 'CLOSED'
-  },
-  {
-    id: 'OKX-4006256149492977664',
-    bot: 'Aggressiva Lena',
-    symbol: 'PEPE-USDC',
-    side: 'BUY',
-    entry_price: 0.000004171,
-    exit_price: 0.000004171,
-    size_units: 4191440.0,
-    notional_usd: 17.50,
-    realized_pnl: 0.0,
-    pnl_pct: 0.0,
-    exit_reason: 'EXCHANGE_FILL',
-    entry_time: '2026-10-13T13:28:57Z',
-    exit_time: '2026-10-13T13:28:57Z',
-    status: 'CLOSED'
-  }
-];
+// Inga exempel-affärer/positioner: dashboarden publicerar ingen orderhistorik eller positioner.
+export const INITIAL_CLOSED_TRADES: Trade[] = [];
 
-// Riktigt aktivt innehav på OKX
-export const INITIAL_POSITIONS: Position[] = [
-  {
-    id: 'POS-ANNA-LIVE-SUI',
-    bot: 'Tradebotten Anna',
-    symbol: 'SUI-USDC',
-    side: 'BUY',
-    entry_price: 1.0464,
-    current_price: 1.0410,
-    high_price: 1.0522,
-    size_units: 38.185,
-    allocated_usd: 39.99,
-    unrealized_pnl: -0.21,
-    pnl_pct: -0.52,
-    trailing_stop_dist_pct: 0.8,
-    opened_at: '2026-10-13T10:13:20Z'
-  },
-  {
-    id: 'POS-LENA-LIVE-PEPE',
-    bot: 'Aggressiva Lena',
-    symbol: 'PEPE-USDC',
-    side: 'BUY',
-    entry_price: 0.000004171,
-    current_price: 0.000004193,
-    high_price: 0.000004193,
-    size_units: 4191440.0,
-    allocated_usd: 17.50,
-    unrealized_pnl: 0.08,
-    pnl_pct: 0.45,
-    trailing_stop_dist_pct: 0.9,
-    opened_at: '2026-10-13T13:28:57Z'
-  },
-  {
-    id: 'POS-LENA-LIVE-INJ',
-    bot: 'Aggressiva Lena',
-    symbol: 'INJ-USDC',
-    side: 'BUY',
-    entry_price: 7.766,
-    current_price: 7.770,
-    high_price: 7.770,
-    size_units: 2.251,
-    allocated_usd: 17.50,
-    unrealized_pnl: 0.01,
-    pnl_pct: 0.05,
-    trailing_stop_dist_pct: 0.9,
-    opened_at: '2026-10-13T13:29:02Z'
-  }
-];
+// Inga exempel-affärer/positioner: dashboarden publicerar ingen orderhistorik eller positioner.
+export const INITIAL_POSITIONS: Position[] = [];
 
-// Topp 30 med mest volym och volatilitet på OKX EEA (USDC cash spot)
 export const INITIAL_MARKET_FLOWS: MarketFlow[] = [
   {
     symbol: 'BTC-USDC',

@@ -1,6 +1,6 @@
 {
-  "name": "Tradebot Command Center — Anna & Aggressiva Lena",
+  "name": "Tradebot Command Center \u2014 Anna & Aggressiva Lena",
   "description": "Unified control panel and quantitative monitor for Tradebotten Anna and Aggressiva Lena bots on OKX.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }

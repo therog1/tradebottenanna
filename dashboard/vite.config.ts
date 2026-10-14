@@ -201,61 +201,6 @@ function apiServerPlugin(): Plugin {
           }
         }
 
-        // 5. POST /api/ai/optimize
-        if (url === '/api/ai/optimize' && req.method === 'POST') {
-          try {
-            let bodyStr = '';
-            req.on('data', c => bodyStr += c);
-            await new Promise(r => req.on('end', r));
-            const body = JSON.parse(bodyStr || '{}');
-
-            const { runBotOptimization } = await import('./src/services/aiOptimizer.ts');
-            const proposal = await runBotOptimization(
-              body.botSlug || 'anna',
-              body.currentConfig || {},
-              body.trades || [],
-              body.positions || [],
-              body.marketFlows || []
-            );
-
-            res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({ success: true, proposal }));
-          } catch (e: any) {
-            res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({ success: false, error: e.message }));
-          }
-        }
-
-        // 6. POST /api/ai/apply  — SKAPAR ENDAST ETT FÖRSLAG. Skriver aldrig till GitHub/main eller live-config.
-        if (url === '/api/ai/apply' && req.method === 'POST') {
-          try {
-            let bodyStr = '';
-            req.on('data', c => bodyStr += c);
-            await new Promise(r => req.on('end', r));
-            const body = JSON.parse(bodyStr || '{}');
-            const { botSlug, proposedParams } = body;
-            const fs = await import('fs');
-            const pathMod = await import('path');
-            const dir = pathMod.resolve(process.cwd(), 'proposals');
-            fs.mkdirSync(dir, { recursive: true });
-            const file = pathMod.join(dir, `${new Date().toISOString().replace(/[:.]/g, '-')}-${botSlug || 'unknown'}.json`);
-            fs.writeFileSync(file, JSON.stringify({
-              status: 'FÖRSLAG – kräver Rogers godkännande via PR',
-              botSlug, proposedParams, created_at: new Date().toISOString()
-            }, null, 2), 'utf-8');
-            res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({
-              success: true,
-              proposalOnly: true,
-              message: `Förslag sparat (${pathMod.basename(file)}). Inget ändrat i live-konfiguration – öppna en PR för granskning.`
-            }));
-          } catch (e: any) {
-            res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({ success: false, error: e.message }));
-          }
-        }
-
-        // 4. POST /api/okx/balance
         // /api/okx/balance borttagen: dashboarden tar aldrig emot nycklar från webbläsaren.
         if (url === '/api/okx/balance') {
           res.statusCode = 410;
@@ -286,7 +231,7 @@ function apiServerPlugin(): Plugin {
 
 export default defineConfig(() => {
   return {
-    base: './',
+    base: '/tradebottenanna/',
     plugins: [react(), tailwindcss(), apiServerPlugin()],
     resolve: {
       alias: {

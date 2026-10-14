@@ -80,7 +80,7 @@ export const OverviewStats: React.FC<OverviewStatsProps> = ({
             </span>
           </div>
           <div className="mt-1 text-xs text-slate-400">
-            <span>På Annas SUI-position ($40.00 köpt)</span>
+            <span>Positioner: okänt</span>
           </div>
         </div>
 
@@ -96,7 +96,7 @@ export const OverviewStats: React.FC<OverviewStatsProps> = ({
             </span>
           </div>
           <div className="mt-1 text-xs text-slate-400">
-            <span>38.19 SUI hålls live på OKX</span>
+            <span>Innehav: okänt</span>
           </div>
         </div>
 
@@ -129,7 +129,7 @@ export const OverviewStats: React.FC<OverviewStatsProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-4 text-slate-300 font-mono text-[11px]">
-          <span>Anna: <b className="text-emerald-400">38.19 SUI</b> + <b className="text-slate-100">7.91 USDC</b></span>
+          <span>Anna: <b className="text-emerald-400">okänt</b></span>
           <span className="text-slate-600">|</span>
           <span>Lena: <b className="text-cyan-400">okänt</b> (ej verifierat mot OKX)</span>
         </div>

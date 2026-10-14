@@ -48,9 +48,8 @@ export const BotCycleModal: React.FC<BotCycleModalProps> = ({
       await delay(400);
       log(`Skannar likviditet och orderboksflöde (OBI-tröskel +50%)...`);
       await delay(600);
-      log(`[PEPE-USDC] Senaste pris: $0.00000417 | Aktiv position bevakas (Trailing Stop aktiv)`);
+      log(`Positioner: okänt (simulering, inga OKX-anrop)`);
       await delay(500);
-      log(`[INJ-USDC] Senaste pris: $7.766 | Aktiv position bevakas`);
       await delay(500);
       log(`[SUI-USDC] OBI: +34.20% | Under tröskeln för ny order (+50%).`);
       await delay(600);
@@ -64,9 +63,9 @@ export const BotCycleModal: React.FC<BotCycleModalProps> = ({
       await delay(400);
       log(`Kollar RiskManager status: Trading Enabled: true, Kill Switch: false`);
       await delay(500);
-      log(`Bevakar aktivt spot-innehav: 38.19 SUI (~$39.73 USD) + 7.91 USDC kassa.`);
+      log(`Innehav: okänt (simulering).`);
       await delay(600);
-      log(`Målnivåer aktiva: Stop Loss = -$0.80 USD, Take Profit = +$1.80 USD.`);
+      log(`Målnivåer: okänt (simulering).`);
       await delay(400);
       log(`✅ Cykel slutförd utan varningar. Portföljens marginutnyttjande är säkert.`);
     }
