@@ -8,8 +8,9 @@ on:
         required: false
         type: boolean
         default: true
-  # No schedule: the engine must not run automatically until Roger approves.
-  # (The workflow is also disabled in GitHub Actions.)
+  # Hourly LIVE run, approved by Roger 2026-10-14 (risk caps 1%/trade, 3% total hardcoded).
+  schedule:
+    - cron: "0 * * * *"
 
 jobs:
   run-demo-cycle:
@@ -38,7 +39,8 @@ jobs:
           OKX_DEMO_API_KEY: ${{ secrets.OKX_API_KEY || secrets.OKX_DEMO_API_KEY }}
           OKX_DEMO_SECRET_KEY: ${{ secrets.OKX_SECRET_KEY || secrets.OKX_DEMO_SECRET_KEY }}
           OKX_DEMO_PASSPHRASE: ${{ secrets.OKX_PASSPHRASE || secrets.OKX_DEMO_PASSPHRASE }}
-          DRY_RUN: ${{ inputs.dry_run == false && 'false' || 'true' }}
+          # schedule -> live; manual dispatch -> dry run unless dry_run=false is chosen
+          DRY_RUN: ${{ github.event_name == 'schedule' && 'false' || (inputs.dry_run == false && 'false' || 'true') }}
         run: |
           echo "Starting TradebottenAnna execution cycle (DRY_RUN=$DRY_RUN)..."
           python main.py
