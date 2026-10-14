@@ -7,9 +7,9 @@ on:
         description: "Dry run only"
         required: false
         type: boolean
-        default: false
-  schedule:
-    - cron: "0 * * * *"
+        default: true
+  # No schedule: the engine must not run automatically until Roger approves.
+  # (The workflow is also disabled in GitHub Actions.)
 
 jobs:
   run-demo-cycle:
@@ -38,7 +38,7 @@ jobs:
           OKX_DEMO_API_KEY: ${{ secrets.OKX_API_KEY || secrets.OKX_DEMO_API_KEY }}
           OKX_DEMO_SECRET_KEY: ${{ secrets.OKX_SECRET_KEY || secrets.OKX_DEMO_SECRET_KEY }}
           OKX_DEMO_PASSPHRASE: ${{ secrets.OKX_PASSPHRASE || secrets.OKX_DEMO_PASSPHRASE }}
-          DEMO_DRY_RUN: "false"
+          DRY_RUN: ${{ inputs.dry_run == false && 'false' || 'true' }}
         run: |
-          echo "Starting TradebottenAnna live execution cycle..."
+          echo "Starting TradebottenAnna execution cycle (DRY_RUN=$DRY_RUN)..."
           python main.py

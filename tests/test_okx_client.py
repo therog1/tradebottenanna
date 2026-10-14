@@ -17,10 +17,11 @@ class TestOKXDemoClient(unittest.TestCase):
             enforce_demo=True
         )
 
-    def test_enforce_demo_cannot_be_disabled(self):
-        """Security check: Client constructor fails if enforce_demo is False."""
-        with self.assertRaises(ValueError):
-            OKXDemoClient(trading_enabled=True, enforce_demo=False)
+    def test_live_mode_has_no_simulated_header(self):
+        """enforce_demo=False targets the EEA live gateway without the demo header."""
+        c = OKXDemoClient(api_key="k", secret_key="s", passphrase="p", enforce_demo=False)
+        self.assertNotIn("x-simulated-trading", c._build_headers("GET", "/x"))
+        self.assertEqual(c.base_url, "https://eea.okx.com")
 
     def test_simulated_trading_header_present(self):
         """Check that x-simulated-trading is set to 1 in all requests."""
@@ -42,11 +43,11 @@ class TestOKXDemoClient(unittest.TestCase):
 
     def test_trading_disabled_blocks_order(self):
         """Ensure place_demo_order is blocked when trading_enabled=False."""
-        result = self.client.place_demo_order(
-            symbol="BTC-USDT-SWAP",
+        result = self.client.place_order(
+            inst_id="BTC-USDT-SWAP",
             side="buy",
-            order_type="market",
-            size=0.01
+            size_contracts="1",
+            sl_trigger_px="50000",
         )
         self.assertFalse(result["success"])
         self.assertTrue(result["blocked"])
