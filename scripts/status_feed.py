@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Read-only OKX status feed för dashboarden.
 
-- Gör ENDAST GET-anrop: account/balance, account/positions, trade/orders-pending,
-  trade/orders-algo-pending (SL/TP-kontroll) och trade/fills (senaste 20).
+- Gör ENDAST GET-anrop: account/balance, account/positions, account/positions-history
+  (realiserad PnL), trade/orders-pending, trade/orders-algo-pending (SL/TP-kontroll)
+  och trade/fills (senaste 20).
 - Inga order-/trade-skrivande endpoints, inga AI-anrop.
 - Utdata byggs ENBART från en allowlist av fält. Aldrig headers, signaturer, nycklar,
   passphrases eller råa svar. Felmeddelanden kortas och rensas.
@@ -23,6 +24,10 @@ ALLOWED_GET = {
     "/api/v5/trade/orders-history?instType=FUTURES&limit=20",
     "/api/v5/trade/orders-history?instType=SWAP&limit=20",
 }
+# positions-history med valfri after-paginering (uTime ms)
+POS_HIST_PATH = re.compile(
+    r"^/api/v5/account/positions-history\?instType=FUTURES&limit=100(&after=\d{1,20})?$"
+)
 HIST_FIELDS = ["instType", "instId", "ordType", "side", "sz", "accFillSz", "avgPx", "state", "cTime", "uTime"]
 BAL_FIELDS = ["ccy", "eq", "eqUsd", "availBal", "availEq", "upl"]
 POS_FIELDS = ["instId", "instType", "mgnMode", "posSide", "pos", "avgPx", "markPx", "upl", "uplRatio",
@@ -49,7 +54,8 @@ ORD_FIELDS = ["instType", "instId", "ordType", "side", "sz", "px", "state", "acc
 ALGO_FIELDS = ["instId", "ordType", "side", "sz", "slTriggerPx", "tpTriggerPx", "state", "cTime"]
 FILL_FIELDS = ["instId", "side", "fillPx", "fillSz", "fee", "feeCcy", "execType", "ts"]
 NUMERIC = set("eq eqUsd availBal availEq upl pos avgPx markPx uplRatio lever liqPx margin sz px accFillSz "
-              "ctVal slTriggerPx tpTriggerPx fillPx fillSz fee totalEq cTime uTime ts".split())
+              "ctVal slTriggerPx tpTriggerPx fillPx fillSz fee totalEq cTime uTime ts "
+              "realized_pnl realized_pnl_today realizedPnl".split())
 STRINGY = re.compile(r"^[A-Za-z0-9_\-\.]{0,40}$")
 
 
@@ -92,7 +98,7 @@ def okx_get(path, key, secret, passphrase, tries=3):
 
 
 def _okx_get_once(path, key, secret, passphrase):
-    assert path in ALLOWED_GET, "endast tillåtna GET-anrop"
+    assert path in ALLOWED_GET or POS_HIST_PATH.match(path), "endast tillåtna GET-anrop"
     ts = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
     sign = base64.b64encode(hmac.new(secret.encode(), (ts + "GET" + path).encode(), hashlib.sha256).digest()).decode()
     req = urllib.request.Request(BASE + path, method="GET", headers={
@@ -140,11 +146,79 @@ def with_ct_val(positions):
     return positions
 
 
+
+STOCKHOLM = dt.timezone(dt.timedelta(hours=2), name="Europe/Stockholm")  # fallback; se ZoneInfo nedan
+try:
+    from zoneinfo import ZoneInfo
+    STOCKHOLM = ZoneInfo("Europe/Stockholm")
+except Exception:  # pragma: no cover
+    pass
+
+
+def sum_realized_pnl(rows, now=None):
+    """Summerar realizedPnl. Returnerar (today, total) där today = Europe/Stockholm-dagen.
+
+    rows: listor med OKX positions-history-rader (realizedPnl, uTime i ms).
+    Saknad/ogiltig realizedPnl räknas som 0. now: datetime (aware) för tester.
+    """
+    now = now or dt.datetime.now(STOCKHOLM)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=STOCKHOLM)
+    else:
+        now = now.astimezone(STOCKHOLM)
+    day0 = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    day0_ms = int(day0.timestamp() * 1000)
+    total = 0.0
+    today = 0.0
+    for r in rows or []:
+        if not isinstance(r, dict):
+            continue
+        try:
+            pnl = float(r.get("realizedPnl") if r.get("realizedPnl") not in (None, "") else 0)
+        except (TypeError, ValueError):
+            pnl = 0.0
+        total += pnl
+        try:
+            ut = float(r.get("uTime") or 0)
+        except (TypeError, ValueError):
+            ut = 0.0
+        if ut >= day0_ms:
+            today += pnl
+    return round(today, 2), round(total, 2)
+
+
+def fetch_positions_history(call, pages=3, limit=100):
+    """GET positions-history FUTURES, upp till `pages` sidor à `limit` (max 100)."""
+    rows, after = [], None
+    for _ in range(max(1, pages)):
+        q = f"/api/v5/account/positions-history?instType=FUTURES&limit={limit}"
+        if after is not None:
+            q += f"&after={after}"
+        batch = call("positions_history", q)
+        if not batch:
+            break
+        rows.extend(batch)
+        if len(batch) < limit:
+            break
+        # older page: after = oldest uTime in this batch
+        utimes = []
+        for b in batch:
+            try:
+                utimes.append(int(float(b.get("uTime"))))
+            except (TypeError, ValueError):
+                pass
+        if not utimes:
+            break
+        after = min(utimes)
+    return rows
+
+
 def fetch_account(name):
     key, secret, pw = (os.environ.get(v, "") for v in ("FEED_KEY", "FEED_SECRET", "FEED_PASS"))
     acc = {"account": name, "fetched_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
            "ok": False, "errors": {}, "totalEqUsd": None, "balances": [], "positions": [],
-           "open_orders": [], "algo_orders": [], "recent_fills": [], "recent_orders": [], "last_order_at": None}
+           "open_orders": [], "algo_orders": [], "recent_fills": [], "recent_orders": [], "last_order_at": None,
+           "realized_pnl": None, "realized_pnl_today": None}
     if not (key and secret and pw):
         acc["errors"]["credentials"] = {"code": "MISSING", "msg": "secrets saknas i workflowet"}
         return acc
@@ -178,6 +252,12 @@ def fetch_account(name):
     acc["recent_orders"] = hist[:20]
     times = [o.get("cTime") for o in hist + acc["open_orders"] if o.get("cTime")]
     acc["last_order_at"] = dt.datetime.fromtimestamp(max(times) / 1000, dt.timezone.utc).isoformat(timespec="seconds") if times else None
+    # Realiserad PnL (frontend-fält: realized_pnl) — idag (Europe/Stockholm) + totalt ur history
+    hist_rows = fetch_positions_history(call, pages=3, limit=100)
+    if hist_rows or "positions_history" not in acc["errors"]:
+        today, total = sum_realized_pnl(hist_rows)
+        acc["realized_pnl_today"] = today
+        acc["realized_pnl"] = total
     acc["ok"] = "balance" not in acc["errors"]
     return acc
 
@@ -191,7 +271,8 @@ def resanitize(acc, name):
     if not isinstance(acc, dict) or not acc:
         return {"account": name, "ok": False, "errors": {"feed": {"code": "MISSING", "msg": "ingen feed"}},
                 "totalEqUsd": None, "balances": [], "positions": [], "open_orders": [], "algo_orders": [],
-                "recent_fills": [], "recent_orders": [], "last_order_at": None, "fetched_at": None}
+                "recent_fills": [], "recent_orders": [], "last_order_at": None, "fetched_at": None,
+                "realized_pnl": None, "realized_pnl_today": None}
     lst = lambda k, f: [pick(x, f) for x in (acc.get(k) or [])[:50] if isinstance(x, dict)]
     errs = {}
     for k, v in (acc.get("errors") or {}).items():
@@ -204,7 +285,9 @@ def resanitize(acc, name):
             "positions": [pick(with_product(p), POS_FIELDS) for p in lst("positions", POS_FIELDS)],
             "open_orders": lst("open_orders", ORD_FIELDS), "algo_orders": lst("algo_orders", ALGO_FIELDS),
             "recent_fills": lst("recent_fills", FILL_FIELDS), "recent_orders": lst("recent_orders", HIST_FIELDS),
-            "last_order_at": _iso(acc.get("last_order_at"))}
+            "last_order_at": _iso(acc.get("last_order_at")),
+            "realized_pnl": _val("realized_pnl", acc.get("realized_pnl")),
+            "realized_pnl_today": _val("realized_pnl_today", acc.get("realized_pnl_today"))}
 
 
 def main():
