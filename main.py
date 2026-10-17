@@ -27,6 +27,7 @@ from trading.reconcile import reconcile
 from trading.sizing import D, InstrumentSpec, round_price, size_contracts, choose_leverage_and_size
 from trading.strategy import StrategyEngine
 from trading.instruments import resolve_symbol
+from trading import crossbot
 
 SLEEP = time.sleep  # tests replace this
 FILL_POLL_TRIES = 5
@@ -134,6 +135,9 @@ def run_bot_cycle(config: BotConfig, client: Optional[OKXClient] = None, dry_run
     orders_sent = 0
 
     alerts: List[str] = []
+    # Gemensamt exponeringstak med Lena (read-only status-feed)
+    own_exposure = [(crossbot.coin_of(p["instId"]), D(p.get("pos") or "0") > 0) for p in rec.open_positions]
+    peer_exposure = crossbot.load_peer("lena")
     for configured in config.strategy.symbols:
         row: Dict[str, Any] = {"symbol": configured, "action": "SKIP"}
         results.append(row)
@@ -171,6 +175,13 @@ def run_bot_cycle(config: BotConfig, client: Optional[OKXClient] = None, dry_run
         if open_count >= config.strategy.max_open_positions:
             row["reason"] = "max_open_positions reached"
             continue
+        cb_ok, cb_why = crossbot.check(crossbot.coin_of(symbol), signal["action"] == "BUY", own_exposure, peer_exposure)
+        if not cb_ok:
+            row["reason"] = cb_why
+            logger.info(f"{symbol}: blocked by cross-bot limit: {cb_why}")
+            continue
+        if cb_why != "OK":
+            logger.warning(f"{symbol}: {cb_why}")
 
         try:
             spec = spec_lookup(symbol)
@@ -237,6 +248,7 @@ def run_bot_cycle(config: BotConfig, client: Optional[OKXClient] = None, dry_run
         open_risk += sizing["risk_usd"]
         used_margin += sizing["notional_usd"] / leverage
         open_count += 1
+        own_exposure.append((crossbot.coin_of(symbol), long))
         row.update({"action": signal["action"], "clOrdId": cl_id})
 
         # Verify fill (an accepted order is not a position).
