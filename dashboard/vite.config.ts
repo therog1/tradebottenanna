@@ -231,7 +231,7 @@ function apiServerPlugin(): Plugin {
 
 export default defineConfig(() => {
   return {
-    base: '/tradebottenanna/',
+    base: process.env.VITE_BASE || '/tradebottenanna/',
     define: {
       __BUILD_ID__: JSON.stringify(`v2.3 · ${process.env.BUILD_SHA || 'dev'} · ${new Date().toISOString().slice(0, 16)}Z`),
     },
