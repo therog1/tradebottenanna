@@ -53,9 +53,15 @@ def with_product(p):
 ORD_FIELDS = ["instType", "instId", "ordType", "side", "sz", "px", "state", "accFillSz", "cTime"]
 ALGO_FIELDS = ["instId", "ordType", "side", "sz", "slTriggerPx", "tpTriggerPx", "state", "cTime"]
 FILL_FIELDS = ["instId", "side", "fillPx", "fillSz", "fee", "feeCcy", "execType", "ts"]
+# Stängda positioner (positions-history) för dashboardens historikflik
+CLOSED_FIELDS = ["instId", "instType", "mgnMode", "type", "posSide", "direction", "lever", "openAvgPx",
+                 "closeAvgPx", "openMaxPos", "closeTotalPos", "realizedPnl", "pnl", "pnlRatio", "fee",
+                 "fundingFee", "cTime", "uTime"]
+CLOSED_MAX = 50
 NUMERIC = set("eq eqUsd availBal availEq upl pos avgPx markPx uplRatio lever liqPx margin sz px accFillSz "
               "ctVal slTriggerPx tpTriggerPx fillPx fillSz fee totalEq cTime uTime ts "
-              "realized_pnl realized_pnl_today realizedPnl".split())
+              "realized_pnl realized_pnl_today realizedPnl openAvgPx closeAvgPx openMaxPos closeTotalPos pnl pnlRatio "
+              "fundingFee".split())
 STRINGY = re.compile(r"^[A-Za-z0-9_\-\.]{0,40}$")
 
 
@@ -187,6 +193,13 @@ def sum_realized_pnl(rows, now=None):
     return round(today, 2), round(total, 2)
 
 
+def closed_positions(rows, limit=CLOSED_MAX):
+    """Senaste stängda positionerna (nyast först), via samma allowlist som övriga fält."""
+    out = [pick(with_product(r), CLOSED_FIELDS + ["product"]) for r in rows or [] if isinstance(r, dict)]
+    out.sort(key=lambda r: r.get("uTime") or 0, reverse=True)
+    return out[:limit]
+
+
 def fetch_positions_history(call, pages=3, limit=100):
     """GET positions-history FUTURES, upp till `pages` sidor à `limit` (max 100)."""
     rows, after = [], None
@@ -218,7 +231,7 @@ def fetch_account(name):
     acc = {"account": name, "fetched_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
            "ok": False, "errors": {}, "totalEqUsd": None, "balances": [], "positions": [],
            "open_orders": [], "algo_orders": [], "recent_fills": [], "recent_orders": [], "last_order_at": None,
-           "realized_pnl": None, "realized_pnl_today": None}
+           "realized_pnl": None, "realized_pnl_today": None, "closed_positions": []}
     if not (key and secret and pw):
         acc["errors"]["credentials"] = {"code": "MISSING", "msg": "secrets saknas i workflowet"}
         return acc
@@ -258,6 +271,7 @@ def fetch_account(name):
         today, total = sum_realized_pnl(hist_rows)
         acc["realized_pnl_today"] = today
         acc["realized_pnl"] = total
+    acc["closed_positions"] = closed_positions(hist_rows)
     acc["ok"] = "balance" not in acc["errors"]
     return acc
 
@@ -272,7 +286,7 @@ def resanitize(acc, name):
         return {"account": name, "ok": False, "errors": {"feed": {"code": "MISSING", "msg": "ingen feed"}},
                 "totalEqUsd": None, "balances": [], "positions": [], "open_orders": [], "algo_orders": [],
                 "recent_fills": [], "recent_orders": [], "last_order_at": None, "fetched_at": None,
-                "realized_pnl": None, "realized_pnl_today": None}
+                "realized_pnl": None, "realized_pnl_today": None, "closed_positions": []}
     lst = lambda k, f: [pick(x, f) for x in (acc.get(k) or [])[:50] if isinstance(x, dict)]
     errs = {}
     for k, v in (acc.get("errors") or {}).items():
@@ -287,7 +301,9 @@ def resanitize(acc, name):
             "recent_fills": lst("recent_fills", FILL_FIELDS), "recent_orders": lst("recent_orders", HIST_FIELDS),
             "last_order_at": _iso(acc.get("last_order_at")),
             "realized_pnl": _val("realized_pnl", acc.get("realized_pnl")),
-            "realized_pnl_today": _val("realized_pnl_today", acc.get("realized_pnl_today"))}
+            "realized_pnl_today": _val("realized_pnl_today", acc.get("realized_pnl_today")),
+            "closed_positions": closed_positions([x for x in (acc.get("closed_positions") or [])
+                                                  if isinstance(x, dict)][:CLOSED_MAX])}
 
 
 def main():
