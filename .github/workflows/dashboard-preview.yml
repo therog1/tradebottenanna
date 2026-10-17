@@ -28,7 +28,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Build
         working-directory: src/dashboard
@@ -36,8 +36,11 @@ jobs:
           VITE_BASE: /tradebottenanna/preview/
           BUILD_SHA: ${{ github.sha }}
         run: |
-          npm install --no-audit --no-fund
-          npm run build
+          set -o pipefail
+          fail() { tail -n 30 "$1" | sed 's/^/::error::/'; exit 1; }
+          npm install --no-audit --no-fund > /tmp/install.log 2>&1 || fail /tmp/install.log
+          npm run build > /tmp/build.log 2>&1 || fail /tmp/build.log
+          tail -n 5 /tmp/build.log
 
       - uses: actions/checkout@v4
         with:
