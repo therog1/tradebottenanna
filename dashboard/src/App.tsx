@@ -30,6 +30,7 @@ export default function App() {
   // Core Trading State
   const [bots, setBots] = useState<BotConfig[]>(() => TradingStore.getBots());
   const [trades, setTrades] = useState<Trade[]>(() => TradingStore.getTrades());
+  const [tradesFromFeed, setTradesFromFeed] = useState(false);
   const [positions, setPositions] = useState<Position[]>(() => TradingStore.getPositions());
   const [flows, setFlows] = useState<MarketFlow[]>(() => TradingStore.getFlows());
 
@@ -87,6 +88,11 @@ export default function App() {
               source: 'STATUS_FEED_READ_ONLY'
             });
             setPositions(feed.positions);
+            if (feed.closedTrades) {
+              // Feeden är facit: ersätt ev. gamla lokala/demo-affärer
+              setTrades(feed.closedTrades);
+              setTradesFromFeed(true);
+            }
           }
           return;
         }
@@ -369,6 +375,7 @@ export default function App() {
           <div className="space-y-4 animate-in fade-in duration-200">
             <TradesHistoryTable
               trades={trades}
+              fromFeed={tradesFromFeed}
               onExportCSV={handleExportCSV}
               onExportJSON={handleExportJSON}
             />

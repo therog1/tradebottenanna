@@ -10,7 +10,7 @@ export interface Trade {
   leverage?: number;
   realized_pnl: number;
   pnl_pct: number;
-  exit_reason: 'TAKE_PROFIT' | 'STOP_LOSS' | 'TRAILING_STOP' | 'MANUAL_CLOSE' | 'EXCHANGE_FILL';
+  exit_reason: 'TAKE_PROFIT' | 'STOP_LOSS' | 'TRAILING_STOP' | 'MANUAL_CLOSE' | 'EXCHANGE_FILL' | 'LIQUIDATION';
   entry_time: string;
   exit_time: string;
   status: 'CLOSED';

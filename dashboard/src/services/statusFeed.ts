@@ -1,4 +1,4 @@
-import { Position } from '../types';
+import { Position, Trade } from '../types';
 
 /** Läser den sanerade read-only-feeden (data/status.json på gh-pages). Saknas/inaktuell => okänt. */
 export const STALE_MINUTES = 75; // schema var 30:e min + marginal
@@ -26,6 +26,8 @@ export interface FeedView {
   lena: FeedAccountView;
   totalEquityUSD?: number;
   positions: Position[];
+  /** Stängda positioner ur OKX positions-history; undefined om feeden saknar fältet. */
+  closedTrades?: Trade[];
   updatedAt?: string;
   feedOk?: boolean;
 }
@@ -72,6 +74,41 @@ const toPositions = (a: any, bot: Position['bot']): Position[] =>
     } as Position;
   });
 
+// OKX positions-history type: 1/2 = stängd (delvis/helt), 3/4 = likvidation, 5 = ADL
+const exitReason = (t: unknown): Trade['exit_reason'] =>
+  ['3', '4', '5'].includes(String(t)) ? 'LIQUIDATION' : 'EXCHANGE_FILL';
+
+const toClosedTrades = (a: any, bot: Trade['bot']): Trade[] | undefined => {
+  if (!Array.isArray(a?.closed_positions)) return undefined;
+  return a.closed_positions.map((c: any, i: number) => {
+    const pnl = num(c.realizedPnl) ?? 0;
+    const ratio = num(c.pnlRatio);
+    const lever = num(c.lever);
+    const gross = num(c.pnl) ?? pnl;
+    // notional ≈ marginal × hävstång, där marginal = pnl / pnlRatio
+    const notional = ratio && lever ? Math.abs((gross / ratio) * lever) : 0;
+    const dir = String(c.direction || c.posSide || '').toLowerCase();
+    const t0 = num(c.cTime), t1 = num(c.uTime);
+    return {
+      id: `OKX-${bot === 'Aggressiva Lena' ? 'LENA' : 'ANNA'}-${c.instId ?? i}-${t1 ?? i}`,
+      bot,
+      symbol: `${String(c.instId ?? 'okänt')}${c.product ? ` · ${c.product}` : ''}`,
+      side: dir === 'short' ? 'SELL' : 'BUY',
+      entry_price: num(c.openAvgPx) ?? 0,
+      exit_price: num(c.closeAvgPx) ?? 0,
+      size_units: num(c.closeTotalPos) ?? 0,
+      notional_usd: Math.round(notional),
+      leverage: lever,
+      realized_pnl: pnl,
+      pnl_pct: (ratio ?? 0) * 100,
+      exit_reason: exitReason(c.type),
+      entry_time: t0 ? new Date(t0).toISOString() : '',
+      exit_time: t1 ? new Date(t1).toISOString() : '',
+      status: 'CLOSED',
+    } as Trade;
+  });
+};
+
 export async function loadStatusFeed(): Promise<FeedView | null> {
   try {
     const url = `${import.meta.env.BASE_URL}data/status.json?t=${Date.now()}`;
@@ -86,8 +123,13 @@ export async function loadStatusFeed(): Promise<FeedView | null> {
       ? anna.totalEquityUSD + lena.totalEquityUSD : undefined;
     const updatedAt = [anna.ok ? d?.anna?.fetched_at : undefined, lena.ok ? d?.lena?.fetched_at : undefined, d?.health?.last_success]
       .filter((x): x is string => typeof x === 'string').sort().pop();
+    const annaClosed = anna.ok ? toClosedTrades(d.anna, 'Tradebotten Anna') : undefined;
+    const lenaClosed = lena.ok ? toClosedTrades(d.lena, 'Aggressiva Lena') : undefined;
+    const closedTrades = annaClosed || lenaClosed
+      ? [...(annaClosed ?? []), ...(lenaClosed ?? [])].sort((x, y) => y.exit_time.localeCompare(x.exit_time))
+      : undefined;
     return {
-      generatedAt: d?.generated_at, stale: !(annaFresh || lenaFresh), anna, lena, totalEquityUSD: total,
+      generatedAt: d?.generated_at, closedTrades, stale: !(annaFresh || lenaFresh), anna, lena, totalEquityUSD: total,
       updatedAt, feedOk: d?.health?.feed_ok,
       positions: [
         ...(anna.ok ? toPositions(d.anna, 'Tradebotten Anna') : []),

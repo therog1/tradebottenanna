@@ -4,12 +4,14 @@ import { Download, Search, CheckCircle2, AlertTriangle, ArrowUpRight, ArrowDownR
 
 interface TradesHistoryTableProps {
   trades: Trade[];
+  fromFeed?: boolean;
   onExportCSV: () => void;
   onExportJSON: () => void;
 }
 
 export const TradesHistoryTable: React.FC<TradesHistoryTableProps> = ({
   trades,
+  fromFeed = false,
   onExportCSV,
   onExportJSON,
 }) => {
@@ -53,7 +55,9 @@ export const TradesHistoryTable: React.FC<TradesHistoryTableProps> = ({
       case 'STOP_LOSS':
         return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-950/80 text-rose-300 border border-rose-800/60">Stop Loss</span>;
       case 'EXCHANGE_FILL':
-        return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-indigo-950/80 text-indigo-300 border border-indigo-800/60">OKX Fill</span>;
+        return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-indigo-950/80 text-indigo-300 border border-indigo-800/60">Stängd på OKX</span>;
+      case 'LIQUIDATION':
+        return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-950/80 text-rose-300 border border-rose-800/60">Likvidation/ADL</span>;
       default:
         return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-800 text-slate-300">Manuell stängning</span>;
     }
@@ -69,10 +73,12 @@ export const TradesHistoryTable: React.FC<TradesHistoryTableProps> = ({
           </div>
           <div>
             <h4 className="text-sm font-semibold text-emerald-200">
-              Skarpa ordrar och säkrade vinster från OKX
+              {fromFeed ? 'Stängda positioner från OKX' : 'Stängda affärer'}
             </h4>
             <p className="text-xs text-slate-300/90 mt-0.5 leading-relaxed">
-              Ordrarna nedan kan innehålla demo-/exempeldata och är inte avstämda mot OKX. Saldon: okänt.
+              {fromFeed
+                ? `Read-only från OKX positions-history (senaste 50 per bot). ${filteredTrades.length} affärer · ${filteredWins.length} vinster · realiserat ${filteredPnl >= 0 ? '+' : '−'}$${Math.abs(filteredPnl).toFixed(2)} i urvalet.`
+                : 'Ingen stängd-affär-data i feeden ännu. Lokala rader kan vara demo-/exempeldata och är inte avstämda mot OKX.'}
             </p>
           </div>
         </div>
