@@ -12,12 +12,12 @@ export const BotCardsSection: React.FC<BotCardsSectionProps> = () => {
     {
       name: 'Tradebotten Anna', icon: <ShieldCheck className="w-5 h-5" />, color: 'blue',
       repo: 'therog1/tradebottenanna', account: 'OKX_ANNA_*',
-      text: 'Swing/trend. Handelsworkflowet demo_trading.yml är avstängt (disabled_manually).',
+      text: 'Swing/trend (1H, EMA9/21 + RSI). Körs av demo_trading.yml varje timme. Exponeringstak mot Lena.',
     },
     {
       name: 'Aggressiva Lena', icon: <Zap className="w-5 h-5" />, color: 'amber',
       repo: 'therog1/tradebottenaggresivalena', account: 'OKX_AGGR_*',
-      text: 'OBI-scalper (USD-M X-perps). Handelsworkflowet lena_scalp.yml är avstängt (disabled_manually). Säkerhets-PR #1 är inte mergad.',
+      text: 'OBI + trendfilter (USD-M X-perps). Körs av lena_scalp.yml var 15:e min. SL läggs hos OKX vid varje inträde. Exponeringstak mot Anna.',
     },
   ];
   return (
@@ -32,7 +32,7 @@ export const BotCardsSection: React.FC<BotCardsSectionProps> = () => {
                 <p className="text-xs text-slate-400">Konto: {c.account}</p>
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">Pausad</span>
+            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">Schemalagd</span>
           </div>
           <p className="text-xs text-slate-400 leading-relaxed">{c.text}</p>
           <a href={`https://github.com/${c.repo}`} target="_blank" rel="noreferrer"
