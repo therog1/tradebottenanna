@@ -79,8 +79,8 @@ export default function App() {
               connected: !feed.stale && (feed.anna.ok || feed.lena.ok),
               isDemo: false,
               totalEquityUSD: feed.totalEquityUSD,
-              anna: { totalEquityUSD: feed.anna.totalEquityUSD, errors: feed.anna.errors, lastOrderAt: feed.anna.lastOrderAt },
-              lena: { totalEquityUSD: feed.lena.totalEquityUSD, errors: feed.lena.errors, lastOrderAt: feed.lena.lastOrderAt },
+              anna: { totalEquityUSD: feed.anna.totalEquityUSD, errors: feed.anna.errors, lastOrderAt: feed.anna.lastOrderAt, realizedPnl: feed.anna.realizedPnl, realizedPnlToday: feed.anna.realizedPnlToday },
+              lena: { totalEquityUSD: feed.lena.totalEquityUSD, errors: feed.lena.errors, lastOrderAt: feed.lena.lastOrderAt, realizedPnl: feed.lena.realizedPnl, realizedPnlToday: feed.lena.realizedPnlToday },
               generatedAt: feed.updatedAt ?? feed.generatedAt,
               feedOk: feed.feedOk,
               stale: feed.stale,
@@ -319,6 +319,10 @@ export default function App() {
               totalEquityUSD={okxBalanceData?.totalEquityUSD}
               annaEquityUSD={okxBalanceData?.anna?.totalEquityUSD}
               lenaEquityUSD={okxBalanceData?.lena?.totalEquityUSD}
+              annaRealizedPnl={okxBalanceData?.anna?.realizedPnl}
+              lenaRealizedPnl={okxBalanceData?.lena?.realizedPnl}
+              annaRealizedToday={okxBalanceData?.anna?.realizedPnlToday}
+              lenaRealizedToday={okxBalanceData?.lena?.realizedPnlToday}
             />
 
             {/* Side-by-side bot cards */}

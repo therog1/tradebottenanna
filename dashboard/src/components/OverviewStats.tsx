@@ -9,7 +9,13 @@ interface OverviewStatsProps {
   totalEquityUSD?: number;
   annaEquityUSD?: number;
   lenaEquityUSD?: number;
+  annaRealizedPnl?: number;
+  lenaRealizedPnl?: number;
+  annaRealizedToday?: number;
+  lenaRealizedToday?: number;
 }
+
+const signedUsd = (v: unknown): string => (isKnown(v) ? `${v >= 0 ? '+' : '−'}$${Math.abs(v).toFixed(2)}` : 'okänt');
 
 export const OverviewStats: React.FC<OverviewStatsProps> = ({
   trades,
@@ -17,10 +23,19 @@ export const OverviewStats: React.FC<OverviewStatsProps> = ({
   totalEquityUSD,
   annaEquityUSD,
   lenaEquityUSD,
+  annaRealizedPnl,
+  lenaRealizedPnl,
+  annaRealizedToday,
+  lenaRealizedToday,
 }) => {
-  // Realized PnL from closed exits
-  const closedWins = trades.filter(t => t.realized_pnl > 0);
-  const totalRealizedPnl = trades.reduce((sum, t) => sum + t.realized_pnl, 0);
+  // Realiserad PnL: i första hand OKX positions-history via status-feeden, annars lokala stängda affärer.
+  const feedHasRealized = isKnown(annaRealizedPnl) || isKnown(lenaRealizedPnl);
+  const feedRealized = (isKnown(annaRealizedPnl) ? annaRealizedPnl : 0) + (isKnown(lenaRealizedPnl) ? lenaRealizedPnl : 0);
+  const feedTodayKnown = isKnown(annaRealizedToday) || isKnown(lenaRealizedToday);
+  const feedToday = (isKnown(annaRealizedToday) ? annaRealizedToday : 0) + (isKnown(lenaRealizedToday) ? lenaRealizedToday : 0);
+  const tradesRealized = trades.reduce((sum, t) => sum + t.realized_pnl, 0);
+  const realizedKnown = feedHasRealized || trades.length > 0;
+  const totalRealizedPnl = feedHasRealized ? feedRealized : tradesRealized;
 
   // Unrealized PnL on active holdings
   const totalUnrealizedPnl = positions.reduce((acc, p) => acc + p.unrealized_pnl, 0);
@@ -55,16 +70,26 @@ export const OverviewStats: React.FC<OverviewStatsProps> = ({
             <DollarSign className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="mt-2 flex items-baseline gap-1.5 font-mono">
-            {trades.length > 0 ? (
+            {realizedKnown ? (
               <span className={`text-2xl font-bold tracking-tight ${totalRealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {totalRealizedPnl >= 0 ? '+' : ''}${totalRealizedPnl.toFixed(2)}
+                {signedUsd(totalRealizedPnl)}
               </span>
             ) : (
               <span className="text-2xl font-bold tracking-tight text-slate-400">okänt</span>
             )}
+            {feedHasRealized && feedTodayKnown && (
+              <span className="text-xs text-slate-400 font-sans">idag {signedUsd(feedToday)}</span>
+            )}
           </div>
-          <div className="mt-1 text-xs text-slate-400">
-            <span>{trades.length > 0 ? `${trades.length} stängda affärer i feeden` : 'Ingen stängd-affär-data i feeden'}</span>
+          <div className="mt-1 text-xs text-slate-400 font-mono flex items-center justify-between">
+            {feedHasRealized ? (
+              <>
+                <span>Anna: <b className="text-slate-300">{signedUsd(annaRealizedPnl)}</b></span>
+                <span>Lena: <b className="text-slate-300">{signedUsd(lenaRealizedPnl)}</b></span>
+              </>
+            ) : (
+              <span className="font-sans">{trades.length > 0 ? `${trades.length} stängda affärer i feeden` : 'Ingen stängd-affär-data i feeden'}</span>
+            )}
           </div>
         </div>
 
@@ -84,7 +109,7 @@ export const OverviewStats: React.FC<OverviewStatsProps> = ({
             </span>
           </div>
           <div className="mt-1 text-xs text-slate-400">
-            <span>Positioner: okänt</span>
+            <span>Positioner: {positions.length}</span>
           </div>
         </div>
 

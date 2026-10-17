@@ -13,6 +13,10 @@ export interface FeedAccountView {
   openOrders: number;
   algoOrders: number;
   lastOrderAt?: string;
+  /** Summa realizedPnl ur OKX positions-history (USD). */
+  realizedPnl?: number;
+  /** Realiserad PnL idag (Europe/Stockholm). */
+  realizedPnlToday?: number;
 }
 
 export interface FeedView {
@@ -34,6 +38,8 @@ const accView = (a: any, fresh: boolean): FeedAccountView => ({
   openOrders: Array.isArray(a?.open_orders) ? a.open_orders.length : 0,
   algoOrders: Array.isArray(a?.algo_orders) ? a.algo_orders.length : 0,
   lastOrderAt: typeof a?.last_order_at === 'string' ? a.last_order_at : undefined,
+  realizedPnl: fresh && a?.ok ? num(a?.realized_pnl) : undefined,
+  realizedPnlToday: fresh && a?.ok ? num(a?.realized_pnl_today) : undefined,
 });
 
 const isFresh = (iso?: string) => {
