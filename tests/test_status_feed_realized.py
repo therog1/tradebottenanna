@@ -51,3 +51,23 @@ def test_resanitize_keeps_realized_fields():
     out = sf.resanitize(raw, "lena")
     assert out["realized_pnl"] == -2.24
     assert out["realized_pnl_today"] == -2.24
+
+
+def test_closed_positions_allowlist_and_order():
+    rows = [
+        {"instId": "SUI-USD_UM_XPERP-310404", "instType": "FUTURES", "direction": "long", "lever": "6",
+         "openAvgPx": "0.9712", "closeAvgPx": "1.0112", "closeTotalPos": "22", "realizedPnl": "0.83",
+         "pnlRatio": "0.24", "type": "2", "cTime": "1000", "uTime": "3000", "posId": "secret-ish", "uly": "x"},
+        {"instId": "BTC-USD_UM_XPERP-310404", "realizedPnl": "-1.2", "uTime": "5000", "type": "3"},
+        "junk",
+    ]
+    out = sf.closed_positions(rows)
+    assert [r["instId"] for r in out] == ["BTC-USD_UM_XPERP-310404", "SUI-USD_UM_XPERP-310404"]
+    assert "posId" not in out[1] and "uly" not in out[1]
+    assert out[1]["realizedPnl"] == 0.83 and out[1]["closeAvgPx"] == 1.0112 and out[1]["lever"] == 6.0
+    assert out[1]["product"] == "X-Perp" and out[1]["type"] == "2"
+    # resanitize behåller listan genom samma allowlist
+    acc = sf.resanitize({"ok": True, "closed_positions": out + [{"instId": "<script>", "realizedPnl": "1"}]}, "lena")
+    assert len(acc["closed_positions"]) == 3
+    assert all(r["instId"] != "<script>" for r in acc["closed_positions"])
+    assert len(sf.closed_positions([{"uTime": str(i)} for i in range(80)])) == sf.CLOSED_MAX
