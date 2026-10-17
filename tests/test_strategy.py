@@ -62,3 +62,16 @@ class TestStrategyEngine(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_ema_matches_reference_definition():
+    from trading.strategy import StrategyEngine
+    vals = [float(x) for x in range(1, 41)]  # linear ramp
+    ema = StrategyEngine._ema(vals, 9)
+    # reference: SMA seed of first 9, then standard EMA recursion
+    ref = sum(vals[:9]) / 9
+    for v in vals[9:]:
+        ref = v * 0.2 + ref * 0.8
+    assert abs(ema - ref) < 1e-9
+    # on a rising ramp the slow EMA lags the fast one
+    assert StrategyEngine._ema(vals, 9) > StrategyEngine._ema(vals, 21)

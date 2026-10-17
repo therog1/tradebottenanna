@@ -31,21 +31,26 @@ class StrategyEngine:
         period = min(14, len(true_ranges))
         return sum(true_ranges[-period:]) / period
 
+    @staticmethod
+    def _ema(values: List[float], period: int) -> float:
+        if len(values) < period:
+            return sum(values) / len(values)
+        ema = sum(values[:period]) / period
+        k = 2.0 / (period + 1)
+        for v in values[period:]:
+            ema = v * k + ema * (1 - k)
+        return ema
+
     def calculate_indicators(self, closes: List[float]) -> Dict[str, float]:
         """Calculate basic EMAs and RSI without third-party heavy dependencies."""
         if not closes or len(closes) < 14:
             return {"ema_fast": 0.0, "ema_slow": 0.0, "rsi": 50.0}
 
-        # EMA fast (9) and slow (21)
-        ema_9 = closes[-1]
-        k_9 = 2.0 / (9 + 1)
-        for c in closes[-9:]:
-            ema_9 = (c * k_9) + (ema_9 * (1 - k_9))
-
-        ema_21 = closes[-1]
-        k_21 = 2.0 / (21 + 1)
-        for c in closes[-21:]:
-            ema_21 = (c * k_21) + (ema_21 * (1 - k_21))
+        # EMA fast (9) and slow (21): seed med SMA av de första N, sedan EMA över hela serien.
+        # (Tidigare seedades med SENASTE stängningen och itererades bara över sista N staplarna,
+        # vilket drog båda EMA:erna mot nuvarande pris och gjorde korsningen opålitlig.)
+        ema_9 = self._ema(closes, 9)
+        ema_21 = self._ema(closes, 21)
 
         # 14-period RSI
         gains = []
