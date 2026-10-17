@@ -5,6 +5,11 @@ name: Dashboard preview
 # data/status.json kopieras in som ögonblicksbild från gh-pages vid varje bygge.
 on:
   workflow_dispatch:
+    inputs:
+      live:
+        description: 'Publicera till live-sidan (roten) i stället för /preview/'
+        type: boolean
+        default: false
   push:
     branches: ['fix/**', 'feat/**', 'feature/**']
     paths: ['dashboard/**', '.github/workflows/dashboard-preview.yml']
@@ -33,7 +38,7 @@ jobs:
       - name: Build
         working-directory: src/dashboard
         env:
-          VITE_BASE: /tradebottenanna/preview/
+          VITE_BASE: ${{ inputs.live && '/tradebottenanna/' || '/tradebottenanna/preview/' }}
           BUILD_SHA: ${{ github.sha }}
         run: |
           set -o pipefail
@@ -47,16 +52,27 @@ jobs:
           ref: gh-pages
           path: site
 
-      - name: Publish to gh-pages/preview
+      - name: Publish
         working-directory: site
+        env:
+          LIVE: ${{ inputs.live && 'true' || 'false' }}
         run: |
-          rm -rf preview
-          cp -r ../src/dashboard/dist preview
-          mkdir -p preview/data
-          cp data/status.json preview/data/status.json 2>/dev/null || true
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add preview
-          git commit -m "Preview: ${GITHUB_REF_NAME} (${GITHUB_SHA::7})" || exit 0
+          if [ "$LIVE" = "true" ]; then
+            # Live: ersätt allt utom feed-data och preview
+            find . -mindepth 1 -maxdepth 1 ! -name .git ! -name data ! -name preview -exec rm -rf {} +
+            cp -r ../src/dashboard/dist/. .
+            git add -A
+            msg="Deploy: ${GITHUB_REF_NAME} (${GITHUB_SHA::7}) (data/ bevaras)"
+          else
+            rm -rf preview
+            cp -r ../src/dashboard/dist preview
+            mkdir -p preview/data
+            cp data/status.json preview/data/status.json 2>/dev/null || true
+            git add preview
+            msg="Preview: ${GITHUB_REF_NAME} (${GITHUB_SHA::7})"
+          fi
+          git commit -m "$msg" || exit 0
           for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 5; done
           exit 1
