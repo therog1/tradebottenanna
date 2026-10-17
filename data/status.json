@@ -1,26 +1,26 @@
 {
   "schema": "tradebot-status/2",
-  "generated_at": "2026-10-17T19:27:50+00:00",
+  "generated_at": "2026-10-17T19:42:14+00:00",
   "source": "github-actions-readonly-feed",
   "anna": {
     "account": "anna",
-    "fetched_at": "2026-10-17T19:27:44+00:00",
+    "fetched_at": "2026-10-17T19:42:08+00:00",
     "ok": true,
     "errors": {},
-    "totalEqUsd": 46.63842614875676,
+    "totalEqUsd": 46.66250883015675,
     "balances": [
       {
         "ccy": "USDC",
-        "eq": 46.637780454556754,
-        "eqUsd": 46.637780454556754,
-        "availBal": 28.600563787890085,
-        "availEq": 28.60056378789009,
-        "upl": -0.4842400000000019
+        "eq": 46.66186045455675,
+        "eqUsd": 46.66186045455675,
+        "availBal": 28.59561712122342,
+        "availEq": 28.595617121223416,
+        "upl": -0.4601599999999989
       },
       {
         "ccy": "SUI",
         "eq": 0.000654,
-        "eqUsd": 0.0006456942,
+        "eqUsd": 0.0006483756,
         "availBal": 0.000654,
         "availEq": 0.000654,
         "upl": 0.0
@@ -34,11 +34,11 @@
         "posSide": "net",
         "pos": -20.0,
         "avgPx": 103.59,
-        "markPx": 103.78,
-        "upl": -0.0379999999999995,
-        "uplRatio": -0.0110049232551397,
+        "markPx": 103.99,
+        "upl": -0.0799999999999983,
+        "uplRatio": -0.0231682594845055,
         "lever": 6.0,
-        "liqPx": 331.9527209527796,
+        "liqPx": 332.277497301122,
         "margin": null,
         "cTime": 1792183537033.0,
         "uTime": 1792252804642.0,
@@ -54,9 +54,9 @@
         "posSide": "net",
         "pos": 8.0,
         "avgPx": 2438.22,
-        "markPx": 2412.56,
-        "upl": -0.2052799999999989,
-        "uplRatio": -0.0315722125156876,
+        "markPx": 2416.69,
+        "upl": -0.172239999999998,
+        "uplRatio": -0.0264906366119542,
         "lever": 3.0,
         "liqPx": null,
         "margin": null,
@@ -74,9 +74,9 @@
         "posSide": "net",
         "pos": 3.0,
         "avgPx": 82247.1,
-        "markPx": 81443.9,
-        "upl": -0.2409600000000035,
-        "uplRatio": -0.0292970815992301,
+        "markPx": 81554.1,
+        "upl": -0.2079,
+        "uplRatio": -0.0252774869873831,
         "lever": 3.0,
         "liqPx": null,
         "margin": null,
@@ -529,23 +529,23 @@
   },
   "lena": {
     "account": "lena",
-    "fetched_at": "2026-10-17T19:27:47+00:00",
+    "fetched_at": "2026-10-17T19:42:11+00:00",
     "ok": true,
     "errors": {},
-    "totalEqUsd": 48.977637079535015,
+    "totalEqUsd": 49.14021894826701,
     "balances": [
       {
         "ccy": "USDC",
-        "eq": 48.977231917535015,
-        "eqUsd": 48.977231917535015,
-        "availBal": 38.69716191753501,
-        "availEq": 38.69716191753501,
-        "upl": 0.3714000000000005
+        "eq": 49.13981191753501,
+        "eqUsd": 49.13981191753501,
+        "availBal": 38.832645250868346,
+        "availEq": 38.832645250868346,
+        "upl": 0.5339799999999988
       },
       {
         "ccy": "INJ",
         "eq": 4.66e-05,
-        "eqUsd": 0.0004037424,
+        "eqUsd": 0.0004056064,
         "availBal": 4.66e-05,
         "availEq": 4.66e-05,
         "upl": 0.0
@@ -553,7 +553,7 @@
       {
         "ccy": "PEPE",
         "eq": 0.364,
-        "eqUsd": 1.4196e-06,
+        "eqUsd": 1.424332e-06,
         "availBal": 0.364,
         "availEq": 0.364,
         "upl": 0.0
@@ -567,9 +567,9 @@
         "posSide": "net",
         "pos": 24.0,
         "avgPx": 0.9733,
-        "markPx": 0.9866,
-        "upl": 0.3191999999999995,
-        "uplRatio": 0.0819891092160683,
+        "markPx": 0.9909,
+        "upl": 0.4223999999999988,
+        "uplRatio": 0.1084968663310391,
         "lever": 6.0,
         "liqPx": null,
         "margin": null,
@@ -587,9 +587,9 @@
         "posSide": "net",
         "pos": 9.0,
         "avgPx": 2403.56,
-        "markPx": 2412.58,
-        "upl": 0.0811799999999998,
-        "uplRatio": 0.0225166003761093,
+        "markPx": 2416.7,
+        "upl": 0.1182599999999989,
+        "uplRatio": 0.0328013446720701,
         "lever": 6.0,
         "liqPx": null,
         "margin": null,
@@ -607,9 +607,9 @@
         "posSide": "net",
         "pos": 2.0,
         "avgPx": 81588.9,
-        "markPx": 81444.0,
-        "upl": -0.0289799999999988,
-        "uplRatio": -0.0106558612752463,
+        "markPx": 81555.5,
+        "upl": -0.0066799999999988,
+        "uplRatio": -0.0024562164706223,
         "lever": 6.0,
         "liqPx": null,
         "margin": null,
@@ -1103,20 +1103,20 @@
     "realized_pnl_today": 0.83
   },
   "health": {
-    "last_attempt": "2026-10-17T19:27:50+00:00",
+    "last_attempt": "2026-10-17T19:42:14+00:00",
     "accounts": {
       "anna": {
         "ok": true,
-        "last_success": "2026-10-17T19:27:50+00:00",
+        "last_success": "2026-10-17T19:42:14+00:00",
         "error": null
       },
       "lena": {
         "ok": true,
-        "last_success": "2026-10-17T19:27:50+00:00",
+        "last_success": "2026-10-17T19:42:14+00:00",
         "error": null
       }
     },
     "feed_ok": true,
-    "last_success": "2026-10-17T19:27:50+00:00"
+    "last_success": "2026-10-17T19:42:14+00:00"
   }
 }
