@@ -1,0 +1,78 @@
+name: Dashboard preview
+
+# Bygger dashboarden från en fix-/feature-gren och publicerar den under
+# https://therog1.github.io/tradebottenanna/preview/ (live-sidan rörs inte).
+# data/status.json kopieras in som ögonblicksbild från gh-pages vid varje bygge.
+on:
+  workflow_dispatch:
+    inputs:
+      live:
+        description: 'Publicera till live-sidan (roten) i stället för /preview/'
+        type: boolean
+        default: false
+  push:
+    branches: ['fix/**', 'feat/**', 'feature/**', 'import/dashboard-v2.3']
+    paths: ['dashboard/**', '.github/workflows/dashboard-preview.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: status-feed
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: src
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build
+        working-directory: src/dashboard
+        env:
+          VITE_BASE: ${{ (inputs.live || github.ref_name == 'import/dashboard-v2.3') && '/tradebottenanna/' || '/tradebottenanna/preview/' }}
+          BUILD_SHA: ${{ github.sha }}
+        run: |
+          set -o pipefail
+          fail() { tail -n 30 "$1" | sed 's/^/::error::/'; exit 1; }
+          npm install --no-audit --no-fund --legacy-peer-deps > /tmp/install.log 2>&1 || fail /tmp/install.log
+          npm run build > /tmp/build.log 2>&1 || fail /tmp/build.log
+          tail -n 5 /tmp/build.log
+
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: site
+
+      - name: Publish
+        working-directory: site
+        env:
+          LIVE: ${{ (inputs.live || github.ref_name == 'import/dashboard-v2.3') && 'true' || 'false' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ "$LIVE" = "true" ]; then
+            # Live: ersätt allt utom feed-data och preview
+            find . -mindepth 1 -maxdepth 1 ! -name .git ! -name data ! -name preview ! -name .nojekyll -exec rm -rf {} +
+            cp -r ../src/dashboard/dist/. .
+            git add -A
+            msg="Deploy: ${GITHUB_REF_NAME} (${GITHUB_SHA::7}) (data/ bevaras)"
+          else
+            rm -rf preview
+            cp -r ../src/dashboard/dist preview
+            mkdir -p preview/data
+            cp data/status.json preview/data/status.json 2>/dev/null || true
+            git add preview
+            msg="Preview: ${GITHUB_REF_NAME} (${GITHUB_SHA::7})"
+          fi
+          git commit -m "$msg" || exit 0
+          for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 5; done
+          exit 1
