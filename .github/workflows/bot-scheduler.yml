@@ -22,9 +22,17 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          end=$(( $(date +%s) + 330*60 ))
+          # Var 15:e min: uppdatera status-feeden (behövs för exponeringstaket). Varje timme: kör Anna.
+          end=$(( $(date +%s) + 330*60 )); i=0
           while [ $(date +%s) -lt $end ]; do
-            gh workflow run demo_trading.yml -R "$GITHUB_REPOSITORY" --ref main -f dry_run=false || echo "dispatch misslyckades"
-            sleep $(( 60 * 60 ))
+            gh workflow run status-feed.yml -R "$GITHUB_REPOSITORY" --ref main || echo "feed-dispatch misslyckades"
+            if [ $(( i % 4 )) -eq 0 ]; then
+              sleep 120  # låt feeden hinna bli färsk före Annas körning
+              gh workflow run demo_trading.yml -R "$GITHUB_REPOSITORY" --ref main -f dry_run=false || echo "anna-dispatch misslyckades"
+              sleep 780
+            else
+              sleep 900
+            fi
+            i=$((i+1))
           done
           gh workflow run bot-scheduler.yml -R "$GITHUB_REPOSITORY" --ref main
