@@ -1,26 +1,26 @@
 {
   "schema": "tradebot-status/2",
-  "generated_at": "2026-10-19T18:18:17+00:00",
+  "generated_at": "2026-10-19T18:33:21+00:00",
   "source": "github-actions-readonly-feed",
   "anna": {
     "account": "anna",
-    "fetched_at": "2026-10-19T18:18:11+00:00",
+    "fetched_at": "2026-10-19T18:33:13+00:00",
     "ok": true,
     "errors": {},
-    "totalEqUsd": 45.27494857075675,
+    "totalEqUsd": 45.32042772055675,
     "balances": [
       {
         "ccy": "USDC",
-        "eq": 45.27430483855675,
-        "eqUsd": 45.27430483855675,
-        "availBal": 35.68798483855675,
-        "availEq": 35.68798483855675,
-        "upl": 0.0474000000000033
+        "eq": 45.31978483855675,
+        "eqUsd": 45.31978483855675,
+        "availBal": 35.74862483855675,
+        "availEq": 35.74862483855675,
+        "upl": 0.0928800000000028
       },
       {
         "ccy": "SUI",
         "eq": 0.000654,
-        "eqUsd": 0.0006437322,
+        "eqUsd": 0.000642882,
         "availBal": 0.000654,
         "availEq": 0.000654,
         "upl": 0.0
@@ -34,9 +34,9 @@
         "posSide": "net",
         "pos": -12.0,
         "avgPx": 2400.53,
-        "markPx": 2396.58,
-        "upl": 0.0474000000000033,
-        "uplRatio": 0.0049364098761528,
+        "markPx": 2392.79,
+        "upl": 0.0928800000000028,
+        "uplRatio": 0.0096728639092205,
         "lever": 3.0,
         "liqPx": 6126.552866481029,
         "margin": null,
@@ -765,23 +765,23 @@
   },
   "lena": {
     "account": "lena",
-    "fetched_at": "2026-10-19T18:18:13+00:00",
+    "fetched_at": "2026-10-19T18:33:16+00:00",
     "ok": true,
     "errors": {},
-    "totalEqUsd": 45.80180962861136,
+    "totalEqUsd": 45.77545037311936,
     "balances": [
       {
         "ccy": "USDC",
-        "eq": 45.801411059795356,
-        "eqUsd": 45.801411059795356,
-        "availBal": 35.231791059795356,
-        "availEq": 35.231791059795356,
-        "upl": -0.1554599999999982
+        "eq": 45.77505105979536,
+        "eqUsd": 45.77505105979536,
+        "availBal": 35.209824393128685,
+        "availEq": 35.20982439312869,
+        "upl": -0.1818199999999974
       },
       {
         "ccy": "INJ",
         "eq": 4.66e-05,
-        "eqUsd": 0.0003970786,
+        "eqUsd": 0.0003978242,
         "availBal": 4.66e-05,
         "availEq": 4.66e-05,
         "upl": 0.0
@@ -789,7 +789,7 @@
       {
         "ccy": "PEPE",
         "eq": 0.364,
-        "eqUsd": 1.490216e-06,
+        "eqUsd": 1.489124e-06,
         "availBal": 0.364,
         "availEq": 0.364,
         "upl": 0.0
@@ -803,9 +803,9 @@
         "posSide": "net",
         "pos": 18.0,
         "avgPx": 1.3043,
-        "markPx": 1.2992,
-        "upl": -0.0918000000000019,
-        "uplRatio": -0.0234608602315425,
+        "markPx": 1.2982,
+        "upl": -0.1097999999999999,
+        "uplRatio": -0.028061028904393,
         "lever": 6.0,
         "liqPx": null,
         "margin": null,
@@ -823,9 +823,9 @@
         "posSide": "net",
         "pos": 30.0,
         "avgPx": 0.07926,
-        "markPx": 0.07884,
-        "upl": -0.1260000000000011,
-        "uplRatio": -0.0317940953822864,
+        "markPx": 0.07886,
+        "upl": -0.1199999999999993,
+        "uplRatio": -0.0302800908402725,
         "lever": 6.0,
         "liqPx": null,
         "margin": null,
@@ -843,9 +843,9 @@
         "posSide": "net",
         "pos": 2.0,
         "avgPx": 81588.9,
-        "markPx": 81943.7,
-        "upl": 0.0709600000000006,
-        "uplRatio": 0.0260917845442208,
+        "markPx": 81828.8,
+        "upl": 0.0479800000000018,
+        "uplRatio": 0.0176421057276186,
         "lever": 6.0,
         "liqPx": null,
         "margin": null,
@@ -1698,20 +1698,20 @@
     ]
   },
   "health": {
-    "last_attempt": "2026-10-19T18:18:17+00:00",
+    "last_attempt": "2026-10-19T18:33:21+00:00",
     "accounts": {
       "anna": {
         "ok": true,
-        "last_success": "2026-10-19T18:18:17+00:00",
+        "last_success": "2026-10-19T18:33:21+00:00",
         "error": null
       },
       "lena": {
         "ok": true,
-        "last_success": "2026-10-19T18:18:17+00:00",
+        "last_success": "2026-10-19T18:33:21+00:00",
         "error": null
       }
     },
     "feed_ok": true,
-    "last_success": "2026-10-19T18:18:17+00:00"
+    "last_success": "2026-10-19T18:33:21+00:00"
   }
 }
