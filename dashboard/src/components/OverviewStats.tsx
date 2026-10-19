@@ -10,6 +10,10 @@ interface OverviewStatsProps {
   annaEquityUSD?: number;
   lenaEquityUSD?: number;
   annaRealizedPnl?: number;
+  annaAvail?: number;
+  lenaAvail?: number;
+  annaOk?: boolean;
+  lenaOk?: boolean;
   lenaRealizedPnl?: number;
   annaRealizedToday?: number;
   lenaRealizedToday?: number;
@@ -24,6 +28,10 @@ export const OverviewStats: React.FC<OverviewStatsProps> = ({
   annaEquityUSD,
   lenaEquityUSD,
   annaRealizedPnl,
+  annaAvail,
+  lenaAvail,
+  annaOk,
+  lenaOk,
   lenaRealizedPnl,
   annaRealizedToday,
   lenaRealizedToday,
@@ -39,7 +47,11 @@ export const OverviewStats: React.FC<OverviewStatsProps> = ({
 
   // Unrealized PnL on active holdings
   const totalUnrealizedPnl = positions.reduce((acc, p) => acc + p.unrealized_pnl, 0);
-  const totalExposure = positions.reduce((acc, p) => acc + p.allocated_usd, 0);
+  const totalExposure = positions.reduce((acc, p) => acc + (p.notional_usd ?? 0), 0);
+  const totalMargin = positions.reduce((acc, p) => acc + p.allocated_usd, 0);
+  const longs = positions.filter(p => p.side === 'BUY').length;
+  const availKnown = isKnown(annaAvail) || isKnown(lenaAvail);
+  const availTotal = (isKnown(annaAvail) ? annaAvail : 0) + (isKnown(lenaAvail) ? lenaAvail : 0);
 
   return (
     <div className="space-y-3">
@@ -125,7 +137,7 @@ export const OverviewStats: React.FC<OverviewStatsProps> = ({
             </span>
           </div>
           <div className="mt-1 text-xs text-slate-400">
-            <span>Innehav: okänt</span>
+            <span>{positions.length > 0 ? `${longs} long · ${positions.length - longs} short · marginal ${fmtUsd(totalMargin)}` : 'Inga öppna positioner'}</span>
           </div>
         </div>
 
@@ -137,11 +149,11 @@ export const OverviewStats: React.FC<OverviewStatsProps> = ({
           </div>
           <div className="mt-2 flex items-baseline gap-1.5 font-mono">
             <span className="text-2xl font-bold text-slate-100">
-              {isKnown(totalEquityUSD) ? fmtUsd(totalEquityUSD - totalExposure) : 'okänt'}
+              {availKnown ? fmtUsd(availTotal) : isKnown(totalEquityUSD) ? fmtUsd(totalEquityUSD - totalMargin) : 'okänt'}
             </span>
           </div>
           <div className="mt-1 text-xs text-slate-400">
-            <span>Lena: okänt • Anna: okänt</span>
+            <span>Anna: {fmtUsd(annaAvail)} • Lena: {fmtUsd(lenaAvail)}</span>
           </div>
         </div>
       </div>
@@ -158,9 +170,9 @@ export const OverviewStats: React.FC<OverviewStatsProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-4 text-slate-300 font-mono text-[11px]">
-          <span>Anna: <b className="text-emerald-400">okänt</b></span>
+          <span>Anna: <b className={annaOk ? "text-emerald-400" : "text-rose-400"}>{annaOk ? "LIVE" : "ej aktuell"}</b></span>
           <span className="text-slate-600">|</span>
-          <span>Lena: <b className="text-cyan-400">okänt</b> (ej verifierat mot OKX)</span>
+          <span>Lena: <b className={lenaOk ? "text-cyan-400" : "text-rose-400"}>{lenaOk ? "LIVE" : "ej aktuell"}</b></span>
         </div>
       </div>
     </div>

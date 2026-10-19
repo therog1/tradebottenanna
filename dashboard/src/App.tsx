@@ -80,8 +80,8 @@ export default function App() {
               connected: !feed.stale && (feed.anna.ok || feed.lena.ok),
               isDemo: false,
               totalEquityUSD: feed.totalEquityUSD,
-              anna: { totalEquityUSD: feed.anna.totalEquityUSD, errors: feed.anna.errors, lastOrderAt: feed.anna.lastOrderAt, realizedPnl: feed.anna.realizedPnl, realizedPnlToday: feed.anna.realizedPnlToday },
-              lena: { totalEquityUSD: feed.lena.totalEquityUSD, errors: feed.lena.errors, lastOrderAt: feed.lena.lastOrderAt, realizedPnl: feed.lena.realizedPnl, realizedPnlToday: feed.lena.realizedPnlToday },
+              anna: { totalEquityUSD: feed.anna.totalEquityUSD, errors: feed.anna.errors, lastOrderAt: feed.anna.lastOrderAt, realizedPnl: feed.anna.realizedPnl, availUsd: feed.anna.availUsd, ok: feed.anna.ok, realizedPnlToday: feed.anna.realizedPnlToday },
+              lena: { totalEquityUSD: feed.lena.totalEquityUSD, errors: feed.lena.errors, lastOrderAt: feed.lena.lastOrderAt, realizedPnl: feed.lena.realizedPnl, availUsd: feed.lena.availUsd, ok: feed.lena.ok, realizedPnlToday: feed.lena.realizedPnlToday },
               generatedAt: feed.updatedAt ?? feed.generatedAt,
               feedOk: feed.feedOk,
               stale: feed.stale,
@@ -325,6 +325,10 @@ export default function App() {
               totalEquityUSD={okxBalanceData?.totalEquityUSD}
               annaEquityUSD={okxBalanceData?.anna?.totalEquityUSD}
               lenaEquityUSD={okxBalanceData?.lena?.totalEquityUSD}
+              annaAvail={okxBalanceData?.anna?.availUsd}
+              lenaAvail={okxBalanceData?.lena?.availUsd}
+              annaOk={okxBalanceData?.anna?.ok}
+              lenaOk={okxBalanceData?.lena?.ok}
               annaRealizedPnl={okxBalanceData?.anna?.realizedPnl}
               lenaRealizedPnl={okxBalanceData?.lena?.realizedPnl}
               annaRealizedToday={okxBalanceData?.anna?.realizedPnlToday}

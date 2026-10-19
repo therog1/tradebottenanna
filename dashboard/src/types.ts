@@ -26,6 +26,7 @@ export interface Position {
   high_price: number;
   size_units: number;
   allocated_usd: number;
+  notional_usd?: number;
   unrealized_pnl: number;
   pnl_pct: number;
   trailing_stop_dist_pct?: number;

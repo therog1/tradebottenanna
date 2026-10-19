@@ -11,7 +11,7 @@ on:
         type: boolean
         default: false
   push:
-    branches: ['fix/**', 'feat/**', 'feature/**']
+    branches: ['fix/**', 'feat/**', 'feature/**', 'import/dashboard-v2.3']
     paths: ['dashboard/**', '.github/workflows/dashboard-preview.yml']
 
 permissions:
@@ -38,7 +38,7 @@ jobs:
       - name: Build
         working-directory: src/dashboard
         env:
-          VITE_BASE: ${{ inputs.live && '/tradebottenanna/' || '/tradebottenanna/preview/' }}
+          VITE_BASE: ${{ (inputs.live || github.ref_name == 'import/dashboard-v2.3') && '/tradebottenanna/' || '/tradebottenanna/preview/' }}
           BUILD_SHA: ${{ github.sha }}
         run: |
           set -o pipefail
@@ -55,7 +55,7 @@ jobs:
       - name: Publish
         working-directory: site
         env:
-          LIVE: ${{ inputs.live && 'true' || 'false' }}
+          LIVE: ${{ (inputs.live || github.ref_name == 'import/dashboard-v2.3') && 'true' || 'false' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

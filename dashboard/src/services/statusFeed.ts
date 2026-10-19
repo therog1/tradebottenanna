@@ -13,6 +13,8 @@ export interface FeedAccountView {
   openOrders: number;
   algoOrders: number;
   lastOrderAt?: string;
+  /** Tillgänglig USDC (availEq). */
+  availUsd?: number;
   /** Summa realizedPnl ur OKX positions-history (USD). */
   realizedPnl?: number;
   /** Realiserad PnL idag (Europe/Stockholm). */
@@ -41,6 +43,7 @@ const accView = (a: any, fresh: boolean): FeedAccountView => ({
   algoOrders: Array.isArray(a?.algo_orders) ? a.algo_orders.length : 0,
   lastOrderAt: typeof a?.last_order_at === 'string' ? a.last_order_at : undefined,
   realizedPnl: fresh && a?.ok ? num(a?.realized_pnl) : undefined,
+  availUsd: fresh && a?.ok ? num((Array.isArray(a?.balances) ? a.balances : []).find((b: any) => b?.ccy === 'USDC')?.availEq) : undefined,
   realizedPnlToday: fresh && a?.ok ? num(a?.realized_pnl_today) : undefined,
 });
 
@@ -54,6 +57,8 @@ const toPositions = (a: any, bot: Position['bot']): Position[] =>
     const pos = num(p.pos) ?? 0;
     const avg = num(p.avgPx) ?? 0;
     const mark = num(p.markPx) ?? avg;
+    const lev = num(p.lever);
+    const notional = Math.abs(pos) * (num(p.ctVal) ?? 0) * mark;
     return {
       id: `FEED-${bot === 'Aggressiva Lena' ? 'LENA' : 'ANNA'}-${p.instId ?? i}`,
       bot,
@@ -65,7 +70,8 @@ const toPositions = (a: any, bot: Position['bot']): Position[] =>
       current_price: mark,
       high_price: Math.max(avg, mark),
       size_units: Math.abs(pos),
-      allocated_usd: num(p.margin) ?? 0,
+      allocated_usd: num(p.margin) ?? (lev ? notional / lev : 0),
+      notional_usd: notional,
       unrealized_pnl: num(p.upl) ?? 0,
       pnl_pct: (num(p.uplRatio) ?? 0) * 100,
       leverage: num(p.lever) ?? undefined,
