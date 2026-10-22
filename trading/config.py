@@ -17,6 +17,7 @@ class StrategyParameters:
     timeframe: str = "1h"
     max_leverage: int = 3
     min_leverage: int = 3
+    short_only: bool = True  # Roger 2026-10-22: bara short-entries
     min_score: int = 65
     atr_stop_multiple: float = 2.0
     atr_target_multiple: float = 3.0
@@ -105,6 +106,7 @@ def load_strategy_config(file_path: Optional[str] = None) -> BotConfig:
         timeframe=str(strat_data.get("timeframe", "1h")),
         max_leverage=int(strat_data.get("max_leverage", 3)),
         min_leverage=int(strat_data.get("min_leverage", 3)),
+        short_only=bool(strat_data.get("short_only", True)),
         min_score=int(strat_data.get("min_score", 65)),
         atr_stop_multiple=float(strat_data.get("atr_stop_multiple", 2.0)),
         atr_target_multiple=float(strat_data.get("atr_target_multiple", 3.0)),

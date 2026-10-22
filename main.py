@@ -38,6 +38,7 @@ logger = logging.getLogger("TradebottenAnna")
 # Hard engine caps; strategy.json may be stricter, never looser.
 MAX_RISK_PER_TRADE_PCT = Decimal("1.0")
 MAX_TOTAL_OPEN_RISK_PCT = Decimal("3.0")
+MAX_LEVERAGE_HARD_CAP = 3  # Roger 2026-10-22: max 3x oavsett strategy.json
 
 BAR_MAP = {"15m": "15m", "30m": "30m", "1h": "1H", "2h": "2H", "4h": "4H", "1d": "1Dutc"}
 
@@ -129,7 +130,7 @@ def run_bot_cycle(config: BotConfig, client: Optional[OKXClient] = None, dry_run
 
     strategy = StrategyEngine(config.strategy)
     bar = BAR_MAP.get(config.strategy.timeframe, "1H")
-    max_lev = min(config.strategy.max_leverage, 10)
+    max_lev = min(config.strategy.max_leverage, MAX_LEVERAGE_HARD_CAP)
     min_lev = min(config.strategy.min_leverage, max_lev)
     results: List[Dict[str, Any]] = []
     orders_sent = 0
@@ -169,6 +170,10 @@ def run_bot_cycle(config: BotConfig, client: Optional[OKXClient] = None, dry_run
         if not (signal.get("passed_threshold") and signal["action"] in ("BUY", "SELL")):
             row["reason"] = "no actionable signal"
             continue
+        if signal["action"] == "BUY" and getattr(config.strategy, "short_only", True):
+            row["reason"] = "short_only: long entry disabled"
+            logger.info(f"{symbol}: BUY signal ignored (short_only)")
+            continue
         if rec.block_new_entries:
             row["reason"] = "new entries blocked by reconciliation"
             continue
@@ -204,6 +209,7 @@ def run_bot_cycle(config: BotConfig, client: Optional[OKXClient] = None, dry_run
         budget = min(per_trade_cap, total_cap - open_risk)
         margin_budget = equity * D(config.strategy.max_margin_fraction) - used_margin
         sizing, lev_int = choose_leverage_and_size(spec, last, sl, budget, max(margin_budget, Decimal(0)), min_lev, max_lev)
+        lev_int = min(int(lev_int), MAX_LEVERAGE_HARD_CAP)
         leverage = D(lev_int)
         sizing["leverage"] = lev_int
         row["sizing"] = {k: (str(v) if isinstance(v, Decimal) else v) for k, v in sizing.items()}

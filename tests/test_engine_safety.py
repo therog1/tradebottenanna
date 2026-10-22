@@ -12,11 +12,12 @@ from trading.sizing import InstrumentSpec, size_contracts, choose_leverage_and_s
 from tests.fake_okx import FakeOKX, BTC, make_candles
 
 
-def cfg(trading=True, risk_pct=1.5, symbols=("BTC-USDT-SWAP",), max_pos=3, margin=0.8, min_score=50):
+def cfg(trading=True, risk_pct=1.5, symbols=("BTC-USDT-SWAP",), max_pos=3, margin=0.8, min_score=50, short_only=False, max_lev=3):
     return BotConfig(
         environment="okx_eu_demo", trading_enabled=trading,
         strategy=StrategyParameters(risk_per_trade_pct=risk_pct, max_open_positions=max_pos, max_margin_fraction=margin,
-                                    min_score=min_score, symbols=list(symbols), max_leverage=3),
+                                    min_score=min_score, symbols=list(symbols), max_leverage=max_lev,
+                                    short_only=short_only),
         risk_limits=RiskLimits(enforce_demo_headers=True),
     )
 
@@ -372,6 +373,30 @@ def test_dynamic_leverage_caps_at_max():
     assert lev == 10 and r["limited_by"] == "margin" and r["contracts"] == Decimal("5.00")
 
 
-def test_strategy_json_max_leverage_10():
+def test_strategy_json_short_only_max_leverage_3():
     s = json.load(open("strategy.json"))["strategy"]
-    assert s["max_leverage"] == 10 and s["min_leverage"] == 3
+    assert s["max_leverage"] == 3 and s["min_leverage"] == 3 and s["short_only"] is True
+
+
+# ------------------------------------------- short-only + max 3x (Roger 2026-10-22)
+def test_loaded_config_defaults_to_short_only():
+    from trading.config import load_strategy_config as load_config
+    assert load_config("strategy.json").strategy.short_only is True
+    assert StrategyParameters().short_only is True
+
+
+def test_short_only_blocks_long_entry():
+    fake = FakeOKX()  # stigande candles => BUY-signal
+    out = run_bot_cycle(cfg(short_only=True), client=fake, dry_run=False)
+    assert fake.orders == [] and fake.leverage_calls == []
+    assert "short_only" in out["results"][0]["reason"]
+
+
+def test_short_only_allows_short_with_sl_and_leverage_max_3():
+    fake = FakeOKX(candles=make_candles(start=66000.0, step=-60.0), last="62460", equity="1000")
+    out = run_bot_cycle(cfg(short_only=True, max_lev=10, margin=0.05), client=fake, dry_run=False)
+    assert out["orders_sent"] == 1, out["results"]
+    o = fake.orders[0]
+    assert o.get("side") == "sell"
+    assert Decimal(o["sl_trigger_px"]) > Decimal(fake.last)  # short -> SL ovanför
+    assert fake.leverage_calls and all(int(c[1]) <= 3 for c in fake.leverage_calls)
