@@ -1,21 +1,21 @@
 {
   "schema": "tradebot-status/2",
-  "generated_at": "2026-10-24T15:25:18+00:00",
+  "generated_at": "2026-10-24T15:27:44+00:00",
   "source": "github-actions-readonly-feed",
   "anna": {
     "account": "anna",
-    "fetched_at": "2026-10-24T15:25:13+00:00",
+    "fetched_at": "2026-10-24T15:27:38+00:00",
     "ok": true,
     "errors": {},
-    "totalEqUsd": 46.363847494185094,
+    "totalEqUsd": 46.31318845918509,
     "balances": [
       {
         "ccy": "USDC",
-        "eq": 46.363250653785094,
-        "eqUsd": 46.363250653785094,
-        "availBal": 46.363250653785094,
-        "availEq": 46.363250653785094,
-        "upl": 0.0
+        "eq": 46.31259161878509,
+        "eqUsd": 46.31259161878509,
+        "availBal": 27.79227161878509,
+        "availEq": 27.79227161878509,
+        "upl": -0.022889999999998
       },
       {
         "ccy": "SUI",
@@ -26,10 +26,52 @@
         "upl": 0.0
       }
     ],
-    "positions": [],
+    "positions": [
+      {
+        "instId": "BTC-USD_UM_XPERP-310404",
+        "instType": "FUTURES",
+        "mgnMode": "cross",
+        "posSide": "net",
+        "pos": -7.0,
+        "avgPx": 79340.1,
+        "markPx": 79372.8,
+        "upl": -0.022889999999998,
+        "uplRatio": -0.0012364491600088,
+        "lever": 3.0,
+        "liqPx": 144521.99123107546,
+        "margin": null,
+        "cTime": 1792855648851.0,
+        "uTime": 1792855648851.0,
+        "product": "X-Perp",
+        "is_perp": true,
+        "ctVal": 0.0001,
+        "ctValCcy": "BTC"
+      }
+    ],
     "open_orders": [],
-    "algo_orders": [],
+    "algo_orders": [
+      {
+        "instId": "BTC-USD_UM_XPERP-310404",
+        "ordType": "oco",
+        "side": "buy",
+        "sz": 7.0,
+        "slTriggerPx": 79865.7,
+        "tpTriggerPx": 78538.9,
+        "state": "live",
+        "cTime": 1792855648851.0
+      }
+    ],
     "recent_fills": [
+      {
+        "instId": "BTC-USD_UM_XPERP-310404",
+        "side": "sell",
+        "fillPx": 79340.1,
+        "fillSz": 7.0,
+        "fee": -0.027769035,
+        "feeCcy": "USDC",
+        "execType": "T",
+        "ts": 1792855648851.0
+      },
       {
         "instId": "SOL-USD_UM_XPERP-310404",
         "side": "buy",
@@ -222,6 +264,18 @@
       }
     ],
     "recent_orders": [
+      {
+        "instType": "FUTURES",
+        "instId": "BTC-USD_UM_XPERP-310404",
+        "ordType": "market",
+        "side": "sell",
+        "sz": 7.0,
+        "accFillSz": 7.0,
+        "avgPx": 79340.1,
+        "state": "filled",
+        "cTime": 1792855648851.0,
+        "uTime": 1792855648851.0
+      },
       {
         "instType": "FUTURES",
         "instId": "SOL-USD_UM_XPERP-310404",
@@ -449,21 +503,9 @@
         "state": "filled",
         "cTime": 1792504896521.0,
         "uTime": 1792504896521.0
-      },
-      {
-        "instType": "FUTURES",
-        "instId": "BTC-USD_UM_XPERP-310404",
-        "ordType": "market",
-        "side": "sell",
-        "sz": 2.0,
-        "accFillSz": 2.0,
-        "avgPx": 81556.8,
-        "state": "filled",
-        "cTime": 1792462001793.0,
-        "uTime": 1792462001793.0
       }
     ],
-    "last_order_at": "2026-10-24T15:10:01+00:00",
+    "last_order_at": "2026-10-24T15:27:28+00:00",
     "realized_pnl": -0.83,
     "realized_pnl_today": 1.5,
     "closed_positions": [
@@ -954,23 +996,23 @@
   },
   "lena": {
     "account": "lena",
-    "fetched_at": "2026-10-24T15:25:15+00:00",
+    "fetched_at": "2026-10-24T15:27:40+00:00",
     "ok": true,
     "errors": {},
-    "totalEqUsd": 49.235131539013985,
+    "totalEqUsd": 49.23923130091799,
     "balances": [
       {
         "ccy": "USDC",
-        "eq": 49.23478076760999,
-        "eqUsd": 49.23478076760999,
-        "availBal": 40.37098076760999,
-        "availEq": 40.37098076760999,
-        "upl": 0.4327999999999999
+        "eq": 49.23888076760999,
+        "eqUsd": 49.23888076760999,
+        "availBal": 40.376447434276656,
+        "availEq": 40.376447434276656,
+        "upl": 0.4368999999999994
       },
       {
         "ccy": "INJ",
         "eq": 4.66e-05,
-        "eqUsd": 0.0003492204,
+        "eqUsd": 0.0003489874,
         "availBal": 4.66e-05,
         "availEq": 4.66e-05,
         "upl": 0.0
@@ -978,7 +1020,7 @@
       {
         "ccy": "PEPE",
         "eq": 0.364,
-        "eqUsd": 1.551004e-06,
+        "eqUsd": 1.545908e-06,
         "availBal": 0.364,
         "availEq": 0.364,
         "upl": 0.0
@@ -992,11 +1034,11 @@
         "posSide": "net",
         "pos": -14.0,
         "avgPx": 0.9304,
-        "markPx": 0.9119,
-        "upl": 0.2589999999999995,
-        "uplRatio": 0.0596517626827169,
+        "markPx": 0.9124,
+        "upl": 0.2520000000000002,
+        "uplRatio": 0.0580395528804815,
         "lever": 3.0,
-        "liqPx": 4.319869277497725,
+        "liqPx": 4.32010499178344,
         "margin": null,
         "cTime": 1792852631852.0,
         "uTime": 1792852631852.0,
@@ -1012,11 +1054,11 @@
         "posSide": "net",
         "pos": -11.0,
         "avgPx": 1.2726,
-        "markPx": 1.2568,
-        "upl": 0.1738000000000004,
-        "uplRatio": 0.0372465818010373,
+        "markPx": 1.2565,
+        "upl": 0.1771,
+        "uplRatio": 0.0379537953795378,
         "lever": 3.0,
-        "liqPx": 5.594215444088013,
+        "liqPx": 5.593579080451649,
         "margin": null,
         "cTime": 1792851692948.0,
         "uTime": 1792851692948.0,
@@ -2193,20 +2235,20 @@
     ]
   },
   "health": {
-    "last_attempt": "2026-10-24T15:25:18+00:00",
+    "last_attempt": "2026-10-24T15:27:44+00:00",
     "accounts": {
       "anna": {
         "ok": true,
-        "last_success": "2026-10-24T15:25:18+00:00",
+        "last_success": "2026-10-24T15:27:44+00:00",
         "error": null
       },
       "lena": {
         "ok": true,
-        "last_success": "2026-10-24T15:25:18+00:00",
+        "last_success": "2026-10-24T15:27:44+00:00",
         "error": null
       }
     },
     "feed_ok": true,
-    "last_success": "2026-10-24T15:25:18+00:00"
+    "last_success": "2026-10-24T15:27:44+00:00"
   }
 }
