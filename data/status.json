@@ -1,26 +1,26 @@
 {
   "schema": "tradebot-status/2",
-  "generated_at": "2026-10-27T17:21:16+00:00",
+  "generated_at": "2026-10-27T17:36:22+00:00",
   "source": "github-actions-readonly-feed",
   "anna": {
     "account": "anna",
-    "fetched_at": "2026-10-27T17:21:09+00:00",
+    "fetched_at": "2026-10-27T17:36:14+00:00",
     "ok": true,
     "errors": {},
-    "totalEqUsd": 45.47083014038749,
+    "totalEqUsd": 45.403390467387496,
     "balances": [
       {
         "ccy": "USDC",
-        "eq": 45.47022649838749,
-        "eqUsd": 45.47022649838749,
-        "availBal": 29.356326498387492,
-        "availEq": 29.35632649838749,
-        "upl": -0.1300199999999982
+        "eq": 45.4027864983875,
+        "eqUsd": 45.4027864983875,
+        "availBal": 29.266406498387497,
+        "availEq": 29.2664064983875,
+        "upl": -0.1974599999999948
       },
       {
         "ccy": "SUI",
         "eq": 0.000654,
-        "eqUsd": 0.000603642,
+        "eqUsd": 0.000603969,
         "availBal": 0.000654,
         "availEq": 0.000654,
         "upl": 0.0
@@ -34,9 +34,9 @@
         "posSide": "net",
         "pos": -6.0,
         "avgPx": 80352.8,
-        "markPx": 80569.5,
-        "upl": -0.1300199999999982,
-        "uplRatio": -0.008090570583726,
+        "markPx": 80681.9,
+        "upl": -0.1974599999999948,
+        "uplRatio": -0.0122870640475501,
         "lever": 3.0,
         "liqPx": 155266.34640580518,
         "margin": null,
@@ -858,23 +858,23 @@
   },
   "lena": {
     "account": "lena",
-    "fetched_at": "2026-10-27T17:21:12+00:00",
+    "fetched_at": "2026-10-27T17:36:17+00:00",
     "ok": true,
     "errors": {},
-    "totalEqUsd": 48.15534243923,
+    "totalEqUsd": 48.07674940529399,
     "balances": [
       {
         "ccy": "USDC",
-        "eq": 48.154963432609996,
-        "eqUsd": 48.154963432609996,
-        "availBal": 36.547263432609995,
-        "availEq": 36.547263432609995,
-        "upl": -0.181899999999998
+        "eq": 48.07637143260999,
+        "eqUsd": 48.07637143260999,
+        "availBal": 40.37243809927666,
+        "availEq": 40.37243809927666,
+        "upl": -0.0475999999999994
       },
       {
         "ccy": "INJ",
         "eq": 4.66e-05,
-        "eqUsd": 0.0003773668,
+        "eqUsd": 0.0003763416,
         "availBal": 4.66e-05,
         "availEq": 4.66e-05,
         "upl": 0.0
@@ -882,7 +882,7 @@
       {
         "ccy": "PEPE",
         "eq": 0.364,
-        "eqUsd": 1.63982e-06,
+        "eqUsd": 1.631084e-06,
         "availBal": 0.364,
         "availEq": 0.364,
         "upl": 0.0
@@ -896,11 +896,11 @@
         "posSide": "net",
         "pos": -13.0,
         "avgPx": 0.9193,
-        "markPx": 0.9227,
-        "upl": -0.0441999999999995,
-        "uplRatio": -0.0110953986729034,
+        "markPx": 0.9233,
+        "upl": -0.052,
+        "uplRatio": -0.0130534102034159,
         "lever": 3.0,
-        "liqPx": 4.507068513369012,
+        "liqPx": 4.519852861162326,
         "margin": null,
         "cTime": 1793060008613.0,
         "uTime": 1793116805116.0,
@@ -910,37 +910,17 @@
         "ctValCcy": "SUI"
       },
       {
-        "instId": "DOGE-USD_UM_XPERP-310404",
-        "instType": "FUTURES",
-        "mgnMode": "cross",
-        "posSide": "net",
-        "pos": -15.0,
-        "avgPx": 0.07718,
-        "markPx": 0.07823,
-        "upl": -0.1574999999999993,
-        "uplRatio": -0.0408136823011143,
-        "lever": 3.0,
-        "liqPx": 0.3888752711586476,
-        "margin": null,
-        "cTime": 1793008618766.0,
-        "uTime": 1793116805116.0,
-        "product": "X-Perp",
-        "is_perp": true,
-        "ctVal": 10.0,
-        "ctValCcy": "DOGE"
-      },
-      {
         "instId": "SOL-USD_UM_XPERP-310404",
         "instType": "FUTURES",
         "mgnMode": "cross",
         "posSide": "net",
         "pos": -11.0,
         "avgPx": 101.03,
-        "markPx": 100.85,
-        "upl": 0.0198000000000008,
-        "uplRatio": 0.0053449470454323,
+        "markPx": 100.99,
+        "upl": 0.0044000000000007,
+        "uplRatio": 0.0011877660100961,
         "lever": 3.0,
-        "liqPx": 528.6492432424093,
+        "liqPx": 530.2434616761279,
         "margin": null,
         "cTime": 1792868821002.0,
         "uTime": 1793116801729.0,
@@ -963,16 +943,6 @@
         "cTime": 1793060008614.0
       },
       {
-        "instId": "DOGE-USD_UM_XPERP-310404",
-        "ordType": "oco",
-        "side": "buy",
-        "sz": 15.0,
-        "slTriggerPx": 0.07856,
-        "tpTriggerPx": 0.07409,
-        "state": "live",
-        "cTime": 1793008618766.0
-      },
-      {
         "instId": "SOL-USD_UM_XPERP-310404",
         "ordType": "oco",
         "side": "buy",
@@ -984,6 +954,16 @@
       }
     ],
     "recent_fills": [
+      {
+        "instId": "DOGE-USD_UM_XPERP-310404",
+        "side": "buy",
+        "fillPx": 0.07856,
+        "fillSz": 15.0,
+        "fee": -0.005892,
+        "feeCcy": "USDC",
+        "execType": "T",
+        "ts": 1793121862746.0
+      },
       {
         "instId": "SUI-USD_UM_XPERP-310404",
         "side": "sell",
@@ -1146,6 +1126,18 @@
       }
     ],
     "recent_orders": [
+      {
+        "instType": "FUTURES",
+        "instId": "DOGE-USD_UM_XPERP-310404",
+        "ordType": "market",
+        "side": "buy",
+        "sz": 15.0,
+        "accFillSz": 15.0,
+        "avgPx": 0.07856,
+        "state": "filled",
+        "cTime": 1793121862745.0,
+        "uTime": 1793121862746.0
+      },
       {
         "instType": "FUTURES",
         "instId": "SUI-USD_UM_XPERP-310404",
@@ -1373,24 +1365,33 @@
         "state": "filled",
         "cTime": 1792851692948.0,
         "uTime": 1792851692948.0
-      },
-      {
-        "instType": "FUTURES",
-        "instId": "XRP-USD_UM_XPERP-310404",
-        "ordType": "market",
-        "side": "buy",
-        "sz": 17.0,
-        "accFillSz": 17.0,
-        "avgPx": 1.2675,
-        "state": "filled",
-        "cTime": 1792851404299.0,
-        "uTime": 1792851404299.0
       }
     ],
-    "last_order_at": "2026-10-27T00:13:28+00:00",
-    "realized_pnl": -1.79,
-    "realized_pnl_today": -0.2,
+    "last_order_at": "2026-10-27T17:24:22+00:00",
+    "realized_pnl": -2.01,
+    "realized_pnl_today": -0.42,
     "closed_positions": [
+      {
+        "instId": "DOGE-USD_UM_XPERP-310404",
+        "instType": "FUTURES",
+        "mgnMode": "cross",
+        "type": "2",
+        "posSide": "net",
+        "direction": "short",
+        "lever": 3.0,
+        "openAvgPx": 0.07718,
+        "closeAvgPx": 0.07856,
+        "openMaxPos": 15.0,
+        "closeTotalPos": 15.0,
+        "realizedPnl": -0.21402345,
+        "pnl": -0.207,
+        "pnlRatio": -0.0554608577351646,
+        "fee": -0.0116805,
+        "fundingFee": 0.00465705,
+        "cTime": 1793008618766.0,
+        "uTime": 1793121862746.0,
+        "product": "X-Perp"
+      },
       {
         "instId": "XRP-USD_UM_XPERP-310404",
         "instType": "FUTURES",
@@ -2255,20 +2256,20 @@
     ]
   },
   "health": {
-    "last_attempt": "2026-10-27T17:21:16+00:00",
+    "last_attempt": "2026-10-27T17:36:22+00:00",
     "accounts": {
       "anna": {
         "ok": true,
-        "last_success": "2026-10-27T17:21:16+00:00",
+        "last_success": "2026-10-27T17:36:22+00:00",
         "error": null
       },
       "lena": {
         "ok": true,
-        "last_success": "2026-10-27T17:21:16+00:00",
+        "last_success": "2026-10-27T17:36:22+00:00",
         "error": null
       }
     },
     "feed_ok": true,
-    "last_success": "2026-10-27T17:21:16+00:00"
+    "last_success": "2026-10-27T17:36:22+00:00"
   }
 }
