@@ -1,13 +1,13 @@
 {
   "schema": "tradebot-status/2",
-  "generated_at": "2026-10-28T13:09:16+00:00",
+  "generated_at": "2026-10-28T13:11:44+00:00",
   "source": "github-actions-readonly-feed",
   "anna": {
     "account": "anna",
-    "fetched_at": "2026-10-28T13:09:12+00:00",
+    "fetched_at": "2026-10-28T13:11:40+00:00",
     "ok": true,
     "errors": {},
-    "totalEqUsd": 45.1582161867875,
+    "totalEqUsd": 45.15821474798749,
     "balances": [
       {
         "ccy": "USDC",
@@ -20,7 +20,7 @@
       {
         "ccy": "SUI",
         "eq": 0.000654,
-        "eqUsd": 0.0006046884,
+        "eqUsd": 0.0006032496,
         "availBal": 0.000654,
         "availEq": 0.000654,
         "upl": 0.0
@@ -837,10 +837,10 @@
   },
   "lena": {
     "account": "lena",
-    "fetched_at": "2026-10-28T13:09:14+00:00",
+    "fetched_at": "2026-10-28T13:11:42+00:00",
     "ok": true,
     "errors": {},
-    "totalEqUsd": 47.70264670776599,
+    "totalEqUsd": 47.702646893074,
     "balances": [
       {
         "ccy": "USDC",
@@ -853,7 +853,7 @@
       {
         "ccy": "INJ",
         "eq": 4.66e-05,
-        "eqUsd": 0.0003640392,
+        "eqUsd": 0.0003642256,
         "availBal": 4.66e-05,
         "availEq": 4.66e-05,
         "upl": 0.0
@@ -861,7 +861,7 @@
       {
         "ccy": "PEPE",
         "eq": 0.364,
-        "eqUsd": 1.775956e-06,
+        "eqUsd": 1.774864e-06,
         "availBal": 0.364,
         "availEq": 0.364,
         "upl": 0.0
@@ -2165,20 +2165,20 @@
     ]
   },
   "health": {
-    "last_attempt": "2026-10-28T13:09:16+00:00",
+    "last_attempt": "2026-10-28T13:11:44+00:00",
     "accounts": {
       "anna": {
         "ok": true,
-        "last_success": "2026-10-28T13:09:16+00:00",
+        "last_success": "2026-10-28T13:11:44+00:00",
         "error": null
       },
       "lena": {
         "ok": true,
-        "last_success": "2026-10-28T13:09:16+00:00",
+        "last_success": "2026-10-28T13:11:44+00:00",
         "error": null
       }
     },
     "feed_ok": true,
-    "last_success": "2026-10-28T13:09:16+00:00"
+    "last_success": "2026-10-28T13:11:44+00:00"
   }
 }
