@@ -1,10 +1,10 @@
 {
   "schema": "tradebot-status/2",
-  "generated_at": "2026-10-28T22:42:58+00:00",
+  "generated_at": "2026-10-28T22:55:43+00:00",
   "source": "github-actions-readonly-feed",
   "anna": {
     "account": "anna",
-    "fetched_at": "2026-10-28T22:42:53+00:00",
+    "fetched_at": "2026-10-28T22:55:37+00:00",
     "ok": true,
     "errors": {},
     "totalEqUsd": 44.66502218938749,
@@ -928,23 +928,23 @@
   },
   "lena": {
     "account": "lena",
-    "fetched_at": "2026-10-28T22:42:55+00:00",
+    "fetched_at": "2026-10-28T22:55:39+00:00",
     "ok": true,
     "errors": {},
-    "totalEqUsd": 46.868951560713995,
+    "totalEqUsd": 46.87373291174999,
     "balances": [
       {
         "ccy": "USDC",
-        "eq": 46.86857086961,
-        "eqUsd": 46.86857086961,
-        "availBal": 44.15929086961,
-        "availEq": 44.15929086961,
-        "upl": -0.0678199999999997
+        "eq": 46.87335086960999,
+        "eqUsd": 46.87335086960999,
+        "availBal": 44.165664202943326,
+        "availEq": 44.165664202943326,
+        "upl": -0.0630400000000009
       },
       {
         "ccy": "INJ",
         "eq": 4.66e-05,
-        "eqUsd": 0.000378858,
+        "eqUsd": 0.0003802094,
         "availBal": 4.66e-05,
         "availEq": 4.66e-05,
         "upl": 0.0
@@ -952,7 +952,7 @@
       {
         "ccy": "PEPE",
         "eq": 0.364,
-        "eqUsd": 1.833104e-06,
+        "eqUsd": 1.83274e-06,
         "availBal": 0.364,
         "availEq": 0.364,
         "upl": 0.0
@@ -966,9 +966,9 @@
         "posSide": "net",
         "pos": -1.0,
         "avgPx": 80600.2,
-        "markPx": 81278.2,
-        "upl": -0.0678,
-        "uplRatio": -0.0252356693903986,
+        "markPx": 81230.6,
+        "upl": -0.0630400000000009,
+        "uplRatio": -0.0234639616278869,
         "lever": 3.0,
         "liqPx": 546141.120850149,
         "margin": null,
@@ -2431,20 +2431,20 @@
     ]
   },
   "health": {
-    "last_attempt": "2026-10-28T22:42:58+00:00",
+    "last_attempt": "2026-10-28T22:55:43+00:00",
     "accounts": {
       "anna": {
         "ok": true,
-        "last_success": "2026-10-28T22:42:58+00:00",
+        "last_success": "2026-10-28T22:55:43+00:00",
         "error": null
       },
       "lena": {
         "ok": true,
-        "last_success": "2026-10-28T22:42:58+00:00",
+        "last_success": "2026-10-28T22:55:43+00:00",
         "error": null
       }
     },
     "feed_ok": true,
-    "last_success": "2026-10-28T22:42:58+00:00"
+    "last_success": "2026-10-28T22:55:43+00:00"
   }
 }
