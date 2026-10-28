@@ -1,10 +1,10 @@
 {
   "schema": "tradebot-status/2",
-  "generated_at": "2026-10-28T11:06:20+00:00",
+  "generated_at": "2026-10-28T11:08:55+00:00",
   "source": "github-actions-readonly-feed",
   "anna": {
     "account": "anna",
-    "fetched_at": "2026-10-28T11:06:15+00:00",
+    "fetched_at": "2026-10-28T11:08:49+00:00",
     "ok": true,
     "errors": {},
     "totalEqUsd": 45.1582258659875,
@@ -837,10 +837,10 @@
   },
   "lena": {
     "account": "lena",
-    "fetched_at": "2026-10-28T11:06:17+00:00",
+    "fetched_at": "2026-10-28T11:08:51+00:00",
     "ok": true,
     "errors": {},
-    "totalEqUsd": 47.702651295677995,
+    "totalEqUsd": 47.702651347373994,
     "balances": [
       {
         "ccy": "USDC",
@@ -853,7 +853,7 @@
       {
         "ccy": "INJ",
         "eq": 4.66e-05,
-        "eqUsd": 0.000368606,
+        "eqUsd": 0.0003686526,
         "availBal": 4.66e-05,
         "availEq": 4.66e-05,
         "upl": 0.0
@@ -861,7 +861,7 @@
       {
         "ccy": "PEPE",
         "eq": 0.364,
-        "eqUsd": 1.797068e-06,
+        "eqUsd": 1.802164e-06,
         "availBal": 0.364,
         "availEq": 0.364,
         "upl": 0.0
@@ -2165,20 +2165,20 @@
     ]
   },
   "health": {
-    "last_attempt": "2026-10-28T11:06:20+00:00",
+    "last_attempt": "2026-10-28T11:08:55+00:00",
     "accounts": {
       "anna": {
         "ok": true,
-        "last_success": "2026-10-28T11:06:20+00:00",
+        "last_success": "2026-10-28T11:08:55+00:00",
         "error": null
       },
       "lena": {
         "ok": true,
-        "last_success": "2026-10-28T11:06:20+00:00",
+        "last_success": "2026-10-28T11:08:55+00:00",
         "error": null
       }
     },
     "feed_ok": true,
-    "last_success": "2026-10-28T11:06:20+00:00"
+    "last_success": "2026-10-28T11:08:55+00:00"
   }
 }
