@@ -1,13 +1,13 @@
 {
   "schema": "tradebot-status/2",
-  "generated_at": "2026-10-29T18:43:46+00:00",
+  "generated_at": "2026-10-29T18:46:11+00:00",
   "source": "github-actions-readonly-feed",
   "anna": {
     "account": "anna",
-    "fetched_at": "2026-10-29T18:43:40+00:00",
+    "fetched_at": "2026-10-29T18:46:05+00:00",
     "ok": true,
     "errors": {},
-    "totalEqUsd": 43.78307347038749,
+    "totalEqUsd": 43.78307418978749,
     "balances": [
       {
         "ccy": "USDC",
@@ -20,7 +20,7 @@
       {
         "ccy": "SUI",
         "eq": 0.000654,
-        "eqUsd": 0.000605277,
+        "eqUsd": 0.0006059964,
         "availBal": 0.000654,
         "availEq": 0.000654,
         "upl": 0.0
@@ -994,23 +994,23 @@
   },
   "lena": {
     "account": "lena",
-    "fetched_at": "2026-10-29T18:43:42+00:00",
+    "fetched_at": "2026-10-29T18:46:08+00:00",
     "ok": true,
     "errors": {},
-    "totalEqUsd": 46.95371792903399,
+    "totalEqUsd": 46.93671876783399,
     "balances": [
       {
         "ccy": "USDC",
-        "eq": 46.95334557060999,
-        "eqUsd": 46.95334557060999,
-        "availBal": 42.68767890394332,
-        "availEq": 42.68767890394332,
-        "upl": 0.1679999999999993
+        "eq": 46.93634557060999,
+        "eqUsd": 46.93634557060999,
+        "availBal": 42.665012237276656,
+        "availEq": 42.665012237276656,
+        "upl": 0.1509999999999989
       },
       {
         "ccy": "INJ",
         "eq": 4.66e-05,
-        "eqUsd": 0.0003704234,
+        "eqUsd": 0.0003712622,
         "availBal": 4.66e-05,
         "availEq": 4.66e-05,
         "upl": 0.0
@@ -1032,9 +1032,9 @@
         "posSide": "net",
         "pos": -10.0,
         "avgPx": 1.2965,
-        "markPx": 1.2797,
-        "upl": 0.1679999999999993,
-        "uplRatio": 0.0388738912456612,
+        "markPx": 1.2814,
+        "upl": 0.1509999999999989,
+        "uplRatio": 0.034940223679136,
         "lever": 3.0,
         "liqPx": 5.855006915297403,
         "margin": null,
@@ -2560,20 +2560,20 @@
     ]
   },
   "health": {
-    "last_attempt": "2026-10-29T18:43:46+00:00",
+    "last_attempt": "2026-10-29T18:46:11+00:00",
     "accounts": {
       "anna": {
         "ok": true,
-        "last_success": "2026-10-29T18:43:46+00:00",
+        "last_success": "2026-10-29T18:46:11+00:00",
         "error": null
       },
       "lena": {
         "ok": true,
-        "last_success": "2026-10-29T18:43:46+00:00",
+        "last_success": "2026-10-29T18:46:11+00:00",
         "error": null
       }
     },
     "feed_ok": true,
-    "last_success": "2026-10-29T18:43:46+00:00"
+    "last_success": "2026-10-29T18:46:11+00:00"
   }
 }
